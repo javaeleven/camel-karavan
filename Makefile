@@ -30,6 +30,10 @@ REGISTRY     ?= localhost:5005
 IMAGE_NAME   ?= camel-karavan
 IMAGE_TAG    ?= dev
 IMAGE        := $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
+# Target CPU arch for the app image. Jib defaults to linux/amd64 regardless of build
+# host, so this MUST match the cluster nodes (EKS is arm64/Graviton) or the pod fails
+# with "exec /usr/bin/java: exec format error". Override for an amd64 cluster.
+JIB_PLATFORM ?= linux/arm64
 
 # Dev-mode build container (karavan-devmode/Dockerfile). karavan-app starts
 # integration build/run containers from THIS image, so it must be pushed to the
@@ -105,9 +109,11 @@ build: generate core app ## Full local build chain (generate -> core -> app)
 
 .PHONY: image-build
 image-build: ## Build the container image $(IMAGE) (Auth0-aligned SPA) via Quarkus Jib
-	# Jib loads a single-arch (host) image into the local Docker daemon for image-push.
+	# Jib loads a single-arch $(JIB_PLATFORM) image into the local Docker daemon for
+	# image-push. The platform MUST match the target cluster (jib defaults to amd64).
 	$(GRADLE) :karavan-app:quarkusBuild -Dquarkus.profile=public \
 		-Dquarkus.container-image.build=true \
+		-Dquarkus.jib.platforms=$(JIB_PLATFORM) \
 		-Dquarkus.container-image.image=$(IMAGE)
 
 .PHONY: image-push
