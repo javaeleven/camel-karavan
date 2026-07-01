@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {capitalize, Content, Nav, NavItem, NavList,} from '@patternfly/react-core';
 import {RightPanel} from "@shared/ui/RightPanel";
 import {useFilesStore, useFileStore, useProjectsStore, useProjectStore} from "@stores/ProjectStore";
@@ -22,19 +22,29 @@ export function SettingsPage() {
     const [key, setKey] = useState<string>();
 
     let {projectId, fileName} = useParams();
+    // Resolve the URL target once — but not until the projects store has loaded.
+    const resolvedRef = useRef(false);
 
     useEffect(() => {
         window.history.replaceState({}, "", `${ROUTES.SETTINGS}`);
+        return () => {
+            setCurrentMenu(SettingsMenus[0]);
+        };
+    }, []);
+
+    // On a page reload the projects store is still empty (data loads after auth), so
+    // wait for it before selecting the project/menu — otherwise the settings view
+    // renders empty. Runs once; in-page nav (onNavSelect) owns selection after that.
+    useEffect(() => {
+        if (resolvedRef.current || projects.length === 0) return;
+        resolvedRef.current = true;
         if (projectId && fileName) {
             selectProject(projectId, fileName);
         } else {
             selectProject(SettingsMenus[0], fileName);
             setCurrentMenu(SettingsMenus[0]);
         }
-        return () => {
-            setCurrentMenu(SettingsMenus[0]);
-        };
-    }, []);
+    }, [projects]);
 
     function title() {
         return (<Content component="h2">Settings</Content>)
