@@ -104,3 +104,6 @@ deploy/helm/karavan/values-auth0.yaml
 
 # local debug log
 logs.txt
+
+# agentic
+ai_docs/

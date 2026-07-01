@@ -111,10 +111,17 @@ build: generate core app ## Full local build chain (generate -> core -> app)
 image-build: ## Build the container image $(IMAGE) (Auth0-aligned SPA) via Quarkus Jib
 	# Jib loads a single-arch $(JIB_PLATFORM) image into the local Docker daemon for
 	# image-push. The platform MUST match the target cluster (jib defaults to amd64).
-	$(GRADLE) :karavan-app:quarkusBuild -Dquarkus.profile=public \
+	# 'clean' + --rerun-tasks + --no-build-cache force Quinoa to rebuild the SPA every
+	# time; otherwise Gradle marks quarkusBuild UP-TO-DATE and ships a STALE frontend
+	# in the image (source edits silently missing from the deployed app).
+	$(GRADLE) --no-build-cache clean :karavan-app:quarkusBuild --rerun-tasks \
+		-Dquarkus.profile=public \
 		-Dquarkus.container-image.build=true \
 		-Dquarkus.jib.platforms=$(JIB_PLATFORM) \
 		-Dquarkus.container-image.image=$(IMAGE)
+	# The rebuilt image takes over the $(IMAGE) tag, leaving the previous one dangling
+	# (untagged). Drop dangling images so a stale one can never be run by mistake.
+	-$(DOCKER) image prune -f
 
 .PHONY: image-push
 image-push: ## Push $(IMAGE) to its registry
