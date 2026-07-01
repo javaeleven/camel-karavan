@@ -90,6 +90,9 @@ stats.html
 
 .claude/
 CLAUDE.md
+start.md
+structure.md
+styling.md
 # Account-specific deploy artifacts (AWS account id / cluster ARNs / hostnames).
 # Keep deploy/helm/karavan/values-eks.example.yaml as the committed template.
 deploy/eks/

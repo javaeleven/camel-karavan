@@ -278,7 +278,9 @@ export function DslElement(props: Props) {
                  borderWidth: getBorderWidth(),
                  borderStyle: hasBorder() ? "dashed" : "none",
                  borderColor:  getBorderColor(),
-                 marginTop: isInStepWithChildren() ? "16px" : "8px",
+                 // Vertical gap between steps == length of the connecting arrow.
+                 // This inline value overrides the CSS margin, so tune spacing here.
+                 marginTop: isInStepWithChildren() ? "48px" : "44px",
                  zIndex: step.dslName === 'ToDefinition' ? 20 : 10,
                  boxShadow: isDraggedOver ? "0px 0px 1px 2px var(--step-border-color-selected)" : "none",
              }}

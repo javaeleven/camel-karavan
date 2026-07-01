@@ -25,9 +25,10 @@
     border-width: 1px;
     min-width: 120px;
     padding: 3px 4px 4px 4px;
-    /* More vertical room between steps so the connecting arrows have length to read as
-       arrows, not stubs. */
-    margin: 20px auto 0 auto;
+    /* NOTE: the vertical gap between steps (= arrow length) is set INLINE in
+       DslElement.tsx (marginTop), which overrides this. Tune spacing there.
+       'auto' left/right keeps each step horizontally centered. */
+    margin: 0 auto 0 auto;
     position: relative;
     /* Lift each step off the canvas; the lift warms to the route-flow colour on hover. */
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
@@ -102,7 +103,28 @@
 }
 
 .karavan .step-element .header {
-    height: 50px;
+    height: 62px;
+    position: relative;
+}
+
+/* Simple node label. Centred under the icon and taken out of flow (absolute) so
+   it never widens the node or shifts its centre — the arrows anchor to the node
+   centre, so keeping the label out of layout guarantees the arrows stay straight.
+   The opaque background masks the arrow that passes behind it, so the arrow reads
+   as passing UNDER the label (label on top, arrow "cut"). The background is the
+   canvas colour so the mask is invisible; it is theme-aware (light/dark). */
+.karavan .step-element .header .text-bottom {
+    position: absolute;
+    top: 46px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    white-space: nowrap;
+    margin-top: 0;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background-color: var(--pf-t--global--background--color--primary--default);
+    z-index: 30;
 }
 
 .karavan .step-element .selected .header-icon {
@@ -144,17 +166,20 @@
 .karavan .step-element .header-icon {
     border-style: solid;
     border-width: 1px;
-    width: 33px;
-    height: 33px;
+    width: 44px;
+    height: 44px;
     margin: auto;
     display: flex;
     justify-content: center;
     align-items: center;
     position: relative;
+    /* Solid chip so each node reads as a card, not a thin outline. */
+    background-color: var(--pf-t--global--background--color--primary--default);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
 }
 
 .karavan .step-element .header-icon-circle {
-    border-radius: 33px;
+    border-radius: 12px;
 }
 
 .karavan .step-element .header-icon-circle .dynamic {
@@ -162,19 +187,21 @@
 }
 
 .karavan .step-element .header-icon-square {
-    border-radius: 33px;
+    border-radius: 12px;
 }
 
+/* Choice used to render as a rotated diamond; keep it a rounded square like the
+   rest so every node shares one shape. */
 .karavan .step-element .header-icon-diamond {
-    border-radius: 4px;
-    transform: rotate(45deg);
-    margin-top: -4px;
-    width: 30px;
-    height: 30px;
+    border-radius: 12px;
+    transform: none;
+    margin-top: 0;
+    width: 44px;
+    height: 44px;
 }
 
 .karavan .step-element .header-icon-diamond .icon {
-    transform: rotate(-45deg);
+    transform: none;
 }
 
 .karavan .step-element .element-border-passed {
@@ -209,7 +236,7 @@
 
 .karavan .step-element .header .icon,
 .element-builder .header .icon {
-    height: 22px;
+    height: 28px;
     width: auto;
     border: none;
     -webkit-user-select: none;
