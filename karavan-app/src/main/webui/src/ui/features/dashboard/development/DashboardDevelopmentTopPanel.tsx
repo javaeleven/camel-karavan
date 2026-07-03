@@ -1,4 +1,3 @@
-import React from 'react';
 import "./DashboardDevelopmentTopPanel.css"
 import {useDashboardHook} from "@features/dashboard/useDashboardHook";
 import UpIcon from "@patternfly/react-icons/dist/esm/icons/running-icon";

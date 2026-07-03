@@ -23,44 +23,39 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.docker.DockerService;
-import org.apache.camel.karavan.service.AuthService;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.HealthCheck;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 import org.eclipse.microprofile.health.Readiness;
-import org.jboss.logging.Logger;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.camel.karavan.KaravanEvents.NOTIFICATION_PROJECTS_STARTED;
 
+@Slf4j
 @Default
 @Readiness
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class StartupLoader implements HealthCheck {
 
-    private static final Logger LOGGER = Logger.getLogger(StartupLoader.class.getName());
+    private final KaravanConfig config;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final DockerService dockerService;
 
-    @Inject
-    DockerService dockerService;
+    private final EventBus eventBus;
 
-    @Inject
-    EventBus eventBus;
+    private final CacheLoader cacheLoader;
 
-    @Inject
-    AuthService authService;
+    private final org.apache.camel.karavan.cache.KaravanCache karavanCache;
 
-    @Inject
-    CacheLoader cacheLoader;
+    private final org.apache.camel.karavan.service.image.DevmodeImageService devmodeImageService;
 
-    @Inject
-    GitLoader  gitLoader;
+    private final GitLoader gitLoader;
 
     private final AtomicBoolean ready = new AtomicBoolean(false);
 
@@ -74,8 +69,8 @@ public class StartupLoader implements HealthCheck {
     }
 
     void onStart(@Observes StartupEvent ev) throws Exception {
-        LOGGER.info("Starting " + ConfigService.getAppName() + " in " + environment + " env in " + (ConfigService.inKubernetes() ? "Kubernetes" : "Docker"));
-        if (!ConfigService.inKubernetes() && !dockerService.checkDocker()){
+        log.info("Starting " + ConfigService.getAppName() + " in " + config.environment() + " env in " + (ConfigService.inKubernetes() ? "Kubernetes" : "Docker"));
+        if (!ConfigService.inKubernetes() && !dockerService.checkDocker()) {
             Quarkus.asyncExit();
         } else {
             createCaches();
@@ -84,16 +79,30 @@ public class StartupLoader implements HealthCheck {
 
     void createCaches() {
         try {
-            LOGGER.info("Loading projects ...");
+            log.info("Loading projects ...");
             cacheLoader.load();
             gitLoader.load();
-            LOGGER.info("Projects loaded");
+            log.info("Projects loaded");
             eventBus.publish(NOTIFICATION_PROJECTS_STARTED, null);
-            LOGGER.info("Creating defaults...");
-            authService.loadDefaults();
+            seedBuiltInRoles();
+            // Async, non-blocking: derive+push the devmode image in-app (Jib Core)
+            // when enabled — replaces the pre-built-image pipeline.
+            devmodeImageService.deriveAndPushIfEnabled();
             ready.set(true);
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
         }
+    }
+
+    /**
+     * Seed the built-in platform roles (names only) so the Access page lists them
+     * on a fresh install; users come from the IdP / manual management.
+     */
+    private void seedBuiltInRoles() {
+        org.apache.camel.karavan.KaravanConstants.getAllRoles().forEach(name -> {
+            if (karavanCache.getRole(name) == null) {
+                karavanCache.saveRole(new org.apache.camel.karavan.model.AccessRole(name, name.replace('-', ' ')), true);
+            }
+        });
     }
 }

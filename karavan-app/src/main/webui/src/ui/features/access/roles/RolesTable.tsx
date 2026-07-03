@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Bullseye, EmptyState, EmptyStateVariant, Spinner} from '@patternfly/react-core';
 import '../AccessPage.css';
 import {InnerScrollContainer, OuterScrollContainer, Table, TableVariant, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';

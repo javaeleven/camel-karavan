@@ -22,13 +22,13 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.PodContainerStatus;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.docker.DockerService;
+import org.apache.camel.karavan.model.PodContainerStatus;
 import org.apache.camel.karavan.service.CodeService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.util.Map;
 import java.util.Objects;
@@ -36,37 +36,32 @@ import java.util.Objects;
 import static org.apache.camel.karavan.KaravanEvents.*;
 import static org.apache.camel.karavan.service.CodeService.BUILD_SCRIPT_FILENAME;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DockerListener {
 
-    private static final Logger LOGGER = Logger.getLogger(DockerListener.class.getName());
+    private final KaravanConfig config;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final DockerService dockerService;
 
-    @Inject
-    DockerService dockerService;
+    private final CodeService codeService;
 
-    @Inject
-    CodeService codeService;
+    private final KaravanCache karavanCache;
 
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @ConsumeEvent(value = CMD_PULL_IMAGES, blocking = true)
     void loadImagesForProject(JsonObject event) {
         String projectId = event.getString("projectId");
-        LOGGER.info("Pull image for project: " + projectId);
+        log.info("Pull image for project: " + projectId);
         String userId = event.getString("userId");
         try {
             dockerService.pullImagesForProject(projectId);
             eventBus.publish(NOTIFICATION_IMAGES_LOADED, event);
         } catch (Exception e) {
             var error = "Failed to load images " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
-            LOGGER.error(error);
+            log.error(error);
             eventBus.publish(NOTIFICATION_ERROR, JsonObject.of("userId", userId, "className", "image", "error", error)
             );
         }
@@ -77,20 +72,20 @@ public class DockerListener {
         var projectId = event.getString("projectId");
         var containerId = event.getString("containerId");
         var type = event.getString("type");
-        var statuses = karavanCache.getPodContainerStatuses(projectId, environment);
+        var statuses = karavanCache.getPodContainerStatuses(projectId, config.environment());
         var status = statuses != null && !statuses.isEmpty() ? statuses.getFirst() : null;
         try {
-            status = status != null ? status : PodContainerStatus.createDevMode(projectId, environment);
+            status = status != null ? status : PodContainerStatus.createDevMode(projectId, config.environment());
             if (!status.getCodeLoaded()) {
                 if (Objects.equals(type, "devmode")) {
                     Map<String, String> files = codeService.getProjectFilesForDevMode(projectId, true);
-                    LOGGER.info("Copy files: " + files.size());
+                    log.info("Copy files: " + files.size());
                     dockerService.copyFiles(containerId, "/karavan/code", files, true);
                     dockerService.copyFiles(containerId, "/tmp", Map.of(".karavan.done", "done"), true);
                 } else if (Objects.equals(type, "build")) {
                     Map<String, String> sshFiles = codeService.getSshFiles();
                     String script = codeService.getBuilderScript();
-                    LOGGER.info("Copy build script: " + script.length() + " and ssh files: " + sshFiles.size());
+                    log.info("Copy build script: " + script.length() + " and ssh files: " + sshFiles.size());
                     dockerService.copyExecFile(containerId, "/karavan/builder", BUILD_SCRIPT_FILENAME, script);
                     sshFiles.forEach((name, text) -> {
                         dockerService.copyExecFile(containerId, "/karavan/.ssh", name, text);
@@ -101,7 +96,7 @@ public class DockerListener {
             }
         } catch (Exception e) {
             var error = "Failed to load images " + (e.getCause() != null ? e.getCause().getMessage() : e.getMessage());
-            LOGGER.error(error);
+            log.error(error);
         }
     }
 }

@@ -22,14 +22,12 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.cache.DeploymentStatus;
 import org.apache.camel.karavan.cache.KaravanCache;
+import org.apache.camel.karavan.model.DeploymentStatus;
 
 import java.util.Objects;
 
-import static org.apache.camel.karavan.KaravanEvents.DEPLOYMENT_DELETED;
-import static org.apache.camel.karavan.KaravanEvents.DEPLOYMENT_UPDATED;
-import static org.apache.camel.karavan.KaravanEvents.NOTIFICATION_STATUS_UPDATED;
+import static org.apache.camel.karavan.KaravanEvents.*;
 
 @ApplicationScoped
 public class DeploymentStatusListener {

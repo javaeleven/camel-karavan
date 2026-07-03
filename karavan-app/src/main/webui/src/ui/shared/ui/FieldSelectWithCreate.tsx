@@ -109,7 +109,7 @@ export function FieldSelectWithCreate(props: Props) {
         if (value && value !== 'no results') {
             setInputValue(value as string);
             setFilterValue('');
-            const text = getPropValues().filter(v => v.value === value).at(0)?.label;
+            const text = getPropValues().find(v => v.value === value)?.label;
             setSelected(text || value.toString());
             setInputValue(text || value.toString());
         }

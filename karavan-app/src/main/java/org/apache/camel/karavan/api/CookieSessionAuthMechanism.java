@@ -11,78 +11,60 @@ import io.vertx.ext.web.RoutingContext;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.util.Set;
 
 /**
- * This mechanism runs FIRST (due to Priority 1).
- * It checks a RUNTIME property 'auth.strategy' to decide what to do.
+ * Internal session-cookie authentication for machine callers — primarily build
+ * containers, which receive a BUILDER_SESSION_ID and call back with it as the
+ * "taskId" cookie. Runs before OIDC (Priority 1) but ONLY claims requests that
+ * carry a valid session cookie; everything else defers (nullItem) so the OIDC
+ * BFF flow handles browsers. Never issues a challenge — machine callers don't
+ * need one and browsers must get the OIDC redirect/401.
  */
+@Slf4j
 @ApplicationScoped
-@Priority(1) // <-- This is crucial. It makes this mechanism run BEFORE the OIDC one.
+@Priority(1) // run before OIDC, but defer unless a valid session cookie is present
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class CookieSessionAuthMechanism implements HttpAuthenticationMechanism {
 
-    private static final Logger LOGGER = Logger.getLogger(CookieSessionAuthMechanism.class.getName());
+    static final String SESSION_COOKIE = "taskId";
 
-    @ConfigProperty(name = "platform.auth", defaultValue = "session")
-    String authStrategy;
-
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
     @Override
     public Uni<SecurityIdentity> authenticate(RoutingContext ctx, IdentityProviderManager idpm) {
-        if (!"session".equals(authStrategy)) {
-            return Uni.createFrom().nullItem();
-        }
-
-        var builder = QuarkusSecurityIdentity.builder();
         try {
-            builder.setPrincipal(() -> "anonymous");
-            builder.setAnonymous(true);
-            var cookie = ctx.request().getCookie("taskId");
+            var cookie = ctx.request().getCookie(SESSION_COOKIE);
             if (cookie == null) {
-                return Uni.createFrom().item(builder.build());
+                return Uni.createFrom().nullItem();
             }
-
             var session = karavanCache.getAccessSession(cookie.getValue());
             if (session == null) {
-                return Uni.createFrom().item(builder.build());
+                return Uni.createFrom().nullItem();
             }
-
-            var user = karavanCache.getUser(session.getUsername());
-            if (user == null) {
-                return Uni.createFrom().item(builder.build());
-            }
-
+            var builder = QuarkusSecurityIdentity.builder();
             builder.setPrincipal(session::getUsername);
-            for (String role : user.getRoles()) {
-                builder.addRole(role);
+            builder.setAnonymous(false);
+            var user = karavanCache.getUser(session.getUsername());
+            if (user != null && user.getRoles() != null) {
+                user.getRoles().forEach(builder::addRole);
             }
             builder.addAttribute("csrf", session.getCsrfToken());
-            builder.setAnonymous(false);
             return Uni.createFrom().item(builder.build());
-
         } catch (Exception e) {
-            LOGGER.error("Error while authenticating session:" + e.getMessage());
-            // Error, return anonymous.
-            return Uni.createFrom().item(builder.build());
+            log.error("Error while authenticating session: {}", e.getMessage());
+            return Uni.createFrom().nullItem();
         }
     }
 
     @Override
     public Uni<ChallengeData> getChallenge(RoutingContext ctx) {
-        if (!"session".equals(authStrategy)) {
-            // OIDC mode: Let the OIDC mechanism (which will run) create the challenge.
-            // Returning null passes control to the next mechanism.
-            return Uni.createFrom().nullItem();
-        }
-
-        // Session mode: We are in charge. Issue the 401 challenge.
-        return Uni.createFrom().item(new ChallengeData(401, "WWW-Authenticate", "Session"));
+        // Always defer: the OIDC mechanism owns the browser challenge.
+        return Uni.createFrom().nullItem();
     }
 
     @Override

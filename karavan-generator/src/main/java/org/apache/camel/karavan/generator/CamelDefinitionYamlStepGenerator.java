@@ -173,8 +173,8 @@ public final class CamelDefinitionYamlStepGenerator extends AbstractGenerator {
         if (className.equals("FromDefinition")) {
             return "if (element && typeof element === 'string') element = { uri: element};";
         } else if (obj.containsKey("oneOf") && obj.containsKey("required")) {
-            List<String> list = obj.getJsonArray("required").getList();
-            list = list.stream().filter(o -> !o.equals("steps")).collect(toList());
+            List<String> list = obj.getJsonArray("required").stream()
+                    .map(String::valueOf).filter(o -> !o.equals("steps")).collect(toList());
             return "if (element && typeof element === 'string') element = {" + list.get(0) + ": element};";
         } else {
             return "";

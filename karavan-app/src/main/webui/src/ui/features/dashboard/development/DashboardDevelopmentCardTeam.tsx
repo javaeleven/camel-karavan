@@ -1,5 +1,4 @@
 import {DashboardDevelopmentCard} from "@features/dashboard/development/DashboardDevelopmentCard";
-import * as React from "react";
 import {AccessService} from "@services/AccessService";
 import {useAccessStore} from "@stores/AccessStore";
 import {shallow} from "zustand/shallow";

@@ -17,42 +17,18 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class DockerVolumeDefinition {
 
     private String type;
     private String source;
     private String target;
-
-    public DockerVolumeDefinition() {
-    }
-
-    public DockerVolumeDefinition(String type, String source, String target) {
-        this.type = type;
-        this.source = source;
-        this.target = target;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public String getSource() {
-        return source;
-    }
-
-    public void setSource(String source) {
-        this.source = source;
-    }
-
-    public String getTarget() {
-        return target;
-    }
-
-    public void setTarget(String target) {
-        this.target = target;
-    }
 }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {
     Bullseye,
     Button,
@@ -69,10 +69,10 @@ export function ImagesPanel() {
     }
 
     function getProjectImage(): string | undefined {
-        const file = files.filter(f => f.name === DOCKER_COMPOSE).at(0);
+        const file = files.find(f => f.name === DOCKER_COMPOSE);
         if (file) {
             const dc = ServicesYaml.yamlToServices(file.code);
-            const dcs = dc.services.filter(s => s.container_name === project.projectId).at(0);
+            const dcs = dc.services.find(s => s.container_name === project.projectId);
             return dcs?.image;
         }
         return undefined;

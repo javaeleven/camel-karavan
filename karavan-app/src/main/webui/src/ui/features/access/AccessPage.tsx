@@ -16,14 +16,13 @@ import {RoleModal} from "@features/access/roles/RoleModal";
 import {UserProfileTab} from "@features/access/users/UserProfileTab";
 import {getCurrentUser} from "@api/auth/AuthApi";
 import {PLATFORM_ADMIN} from "@models/AccessModels";
-import {PasswordModal} from "@features/access/users/PasswordModal";
 
 export const AccessPage = () => {
 
     const adminMenus: (string | number)[] = ['profile', 'users', 'roles'];
     const userMenus: (string | number)[] = ['profile'];
-    const [showUserModal, setShowUserModal, setFilter, filter, setCurrentUser, showRoleModal, setShowRoleModal, showPasswordModal] =
-        useAccessStore((s) => [s.showUserModal, s.setShowUserModal, s.setFilter, s.filter, s.setCurrentUser, s.showRoleModal, s.setShowRoleModal, s.showPasswordModal], shallow);
+    const [showUserModal, setShowUserModal, setFilter, filter, setCurrentUser, showRoleModal, setShowRoleModal] =
+        useAccessStore((s) => [s.showUserModal, s.setShowUserModal, s.setFilter, s.filter, s.setCurrentUser, s.showRoleModal, s.setShowRoleModal], shallow);
     const [activeItem, setActiveItem] = useState<string | number>(userMenus.at(0)!);
     const onSelect = (_event: React.FormEvent<HTMLInputElement>, result: { itemId: number | string }) => {
         setActiveItem(result.itemId);
@@ -114,7 +113,6 @@ export const AccessPage = () => {
                             {activeItem === 'profile' && <UserProfileTab/>}
                             {showUserModal && <UserModal/>}
                             {showRoleModal && <RoleModal/>}
-                            {showPasswordModal && <PasswordModal/>}
                         </div>
                     </ErrorBoundaryWrapper>
                 </div>

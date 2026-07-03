@@ -22,65 +22,53 @@ import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.cache.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.cache.KaravanCache;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.docker.DockerComposeConverter;
 import org.apache.camel.karavan.docker.DockerForKaravan;
 import org.apache.camel.karavan.docker.DockerStackConverter;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
-import org.apache.camel.karavan.model.CommitResult;
-import org.apache.camel.karavan.model.DockerComposeService;
-import org.apache.camel.karavan.model.DockerStackService;
-import org.apache.camel.karavan.model.PathCommitDetails;
+import org.apache.camel.karavan.model.*;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.apache.camel.karavan.KaravanConstants.*;
-import static org.apache.camel.karavan.KaravanEvents.CMD_PUSH_PROJECT;
-import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_DELETED;
-import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_UPDATED;
+import static org.apache.camel.karavan.KaravanEvents.*;
 import static org.apache.camel.karavan.service.CodeService.*;
 
+@Slf4j
 @Default
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ProjectService {
 
-    private static final Logger LOGGER = Logger.getLogger(ProjectService.class.getName());
     private static final String DEFAULT_AUTHOR_NAME = "karavan";
     private static final String DEFAULT_AUTHOR_EMAIL = "karavan@test.org";
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = DEV)
-    String environment;
+    private final KaravanConfig config;
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
-    @Inject
-    GitService gitService;
+    private final GitService gitService;
 
-    @Inject
-    CodeService codeService;
+    private final CodeService codeService;
 
-    @Inject
-    ConfigService configService;
+    private final ConfigService configService;
 
-    @Inject
-    KubernetesService kubernetesService;
+    private final KubernetesService kubernetesService;
 
-    @Inject
-    DockerForKaravan dockerForKaravan;
+    private final DockerForKaravan dockerForKaravan;
 
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
-    @Inject
-    AuthService authService;
+    private final AuthService authService;
 
     public List<ProjectFolder> getAllProjects(String type) {
         Map<String, Long> lastUpdates = karavanCache.getLatestUpdatePerProject();
@@ -105,8 +93,8 @@ public class ProjectService {
     }
 
     public CommitResult commitAndPushProject(String projectId, String message, String authorName, String authorEmail, List<String> fileNames) throws Exception {
-        if (Objects.equals(environment, DEV)) {
-            LOGGER.info("Commit project: " + projectId);
+        if (Objects.equals(config.environment(), DEV)) {
+            log.info("Commit project: " + projectId);
             ProjectFolder p = karavanCache.getProject(projectId);
             if (p == null || !gitService.hasRemote(p)) {
                 throw new Exception("Project has no Git repository configured: " + projectId);
@@ -132,14 +120,14 @@ public class ProjectService {
                 return new CommitResult(p, statuses, messages, null, null);
             }
         } else {
-            throw new RuntimeException("Unsupported environment: " + environment);
+            throw new RuntimeException("Unsupported environment: " + config.environment());
         }
     }
 
     public String runProjectInDeveloperMode(String projectId, Boolean verbose, Boolean compile, Map<String, String> labels, Map<String, String> envVars, Boolean appOnly) throws Exception {
-        PodContainerStatus status = karavanCache.getDevModePodContainerStatus(projectId, environment);
+        PodContainerStatus status = karavanCache.getDevModePodContainerStatus(projectId, config.environment());
         if (status == null) {
-            status = PodContainerStatus.createDevMode(projectId, environment);
+            status = PodContainerStatus.createDevMode(projectId, config.environment());
         }
         if (!Objects.equals(status.getState(), PodContainerStatus.State.running.name())) {
             status.setInTransit(true);
@@ -170,7 +158,7 @@ public class ProjectService {
                 // The dev-mode container failed to start. Remove the in-transit devmode
                 // status so it doesn't linger as a phantom 'unknown' row that permanently
                 // disables the Run button; the user can then retry.
-                LOGGER.error("Failed to start dev mode for " + projectId, e);
+                log.error("Failed to start dev mode for " + projectId, e);
                 eventBus.publish(POD_CONTAINER_DELETED, JsonObject.mapFrom(status));
                 throw e;
             }
@@ -199,11 +187,11 @@ public class ProjectService {
         tag = tag != null && !tag.isBlank()
                 ? tag
                 : Instant.now().toString().substring(0, 19).replace(":", "-");
-        var name = projectFolder.getProjectId() + "-builder";
+        var name = projectFolder.getProjectId() + BUILDER_SUFFIX;
         var session = authService.createAndSaveSession(name, false);
         if (ConfigService.inKubernetes()) {
             String podFragment = codeService.getBuilderPodFragment();
-            podFragment = codeService.substituteVariables(podFragment, Map.of( "projectId", projectFolder.getProjectId(), "tag", tag));
+            podFragment = codeService.substituteVariables(podFragment, Map.of("projectId", projectFolder.getProjectId(), "tag", tag));
             Map<String, String> env = new HashMap<>(gitEnv);
             env.put(ENV_VAR_BUILDER_SESSION_ID, session.getSessionId());
             env.put("CAMEL_RUNTIME", runtime);
@@ -219,7 +207,7 @@ public class ProjectService {
         } else {
             Map<String, String> sshFiles = codeService.getSshFiles();
             String script = codeService.getBuilderScript();
-            String composeFragment =  codeService.getBuilderComposeFragment(projectFolder.getProjectId(), tag);
+            String composeFragment = codeService.getBuilderComposeFragment(projectFolder.getProjectId(), tag);
             DockerComposeService compose = DockerComposeConverter.fromCode(composeFragment, name);
             compose.addEnvironment(ENV_VAR_RUN_IN_BUILD_MODE, "true");
             compose.addEnvironment(ENV_VAR_BUILDER_SESSION_ID, session.getSessionId());
@@ -229,7 +217,9 @@ public class ProjectService {
         }
     }
 
-    /** Git env injected into the build container so it can clone the project's own remote. */
+    /**
+     * Git env injected into the build container so it can clone the project's own remote.
+     */
     private Map<String, String> builderGitEnv(ProjectFolder projectFolder, UserGitConfig user) {
         Map<String, String> env = new HashMap<>();
         env.put("GIT_REPOSITORY", projectFolder.getGitRepository());
@@ -248,10 +238,10 @@ public class ProjectService {
     }
 
     public void importProject(String projectId, UserGitConfig user) throws Exception {
-        LOGGER.info("Import project from Git " + projectId);
+        log.info("Import project from Git " + projectId);
         ProjectFolder projectFolder = karavanCache.getProject(projectId);
         if (projectFolder == null) {
-            LOGGER.error("Cannot import unknown project: " + projectId);
+            log.error("Cannot import unknown project: " + projectId);
             return;
         }
         List<PathCommitDetails> pathCommitDetails = gitService.readProjectFromRepository(projectFolder, user);
@@ -263,7 +253,7 @@ public class ProjectService {
             var folderDetails = pathCommitDetails.stream().filter(PathCommitDetails::isFolder).findFirst().orElse(null);
             var filesDetails = pathCommitDetails.stream().filter(f -> !f.isFolder()).toList();
             assert folderDetails != null;
-            LOGGER.info("Import project from GitRepo " + folderDetails.projectId());
+            log.info("Import project from git repository {}", folderDetails.projectId());
             ProjectFolder projectFolder = getProjectFromRepo(folderDetails, pathCommitDetails);
             // Re-import rebuilds the folder from repo content, which has no git
             // remote info — carry the per-project remote forward from the cache.
@@ -277,7 +267,7 @@ public class ProjectService {
                 karavanCache.saveProjectFile(file, repoFile.commitId(), false);
             });
         } catch (Exception e) {
-            LOGGER.error("Error during project import", e);
+            log.error("Error during project import", e);
         }
     }
 
@@ -296,7 +286,9 @@ public class ProjectService {
         return new ProjectFolderCommited(folderDetails.projectId(), folderDetails.commitId(), folderDetails.commitTime());
     }
 
-    /** Preserve a project's configured Git remote + owner across a repo re-import. */
+    /**
+     * Preserve a project's configured Git remote + owner across a repo re-import.
+     */
     private void carryGitRemote(ProjectFolder existing, ProjectFolder rebuilt) {
         if (existing != null && rebuilt != null && existing.getGitRepository() != null) {
             rebuilt.setGitRepository(existing.getGitRepository());
@@ -365,8 +357,8 @@ public class ProjectService {
                 var port = getMaxPortMappedInProjects() + 1;
                 ProjectFile projectCompose =
                         configService.inDockerSwarmMode()
-                        ? codeService.createInitialProjectStack(projectFolder, port)
-                        : codeService.createInitialProjectCompose(projectFolder, port);
+                                ? codeService.createInitialProjectStack(projectFolder, port)
+                                : codeService.createInitialProjectCompose(projectFolder, port);
                 karavanCache.saveProjectFile(projectCompose, null, true);
             } else {
                 ProjectFile projectDeployment = codeService.createInitialDeployment(projectFolder);

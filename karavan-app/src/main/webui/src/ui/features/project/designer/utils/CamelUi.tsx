@@ -100,7 +100,7 @@ import {
     SplitIcon,
     ToIcon,
 } from "../icons/EipIcons";
-import React, {ReactElement} from "react";
+import {ReactElement} from "react";
 import {TopologyUtils} from "@core/api/TopologyUtils";
 import {getIntegrations} from "@features/project/project-topology/TopologyApi";
 import {toKebabCase, toSpecialRouteId} from "./ValidatorUtils";
@@ -525,17 +525,17 @@ export class CamelUi {
             const uniqueUri = uri + ':name=' + name;
             const outgoingNodes = TopologyUtils.findTopologyRouteOutgoingNodes(integrations);
             console.debug(outgoingNodes);
-            let step = outgoingNodes.filter(node => node.uniqueUri === uniqueUri).at(0)?.step;
+            let step = outgoingNodes.find(node => node.uniqueUri === uniqueUri)?.step;
             if (step === undefined) {
                 const restUri = uri + ':' + name;
                 const restNodes = TopologyUtils.findTopologyRestNodes(integrations);
                 restNodes.filter(restNode => restNode.uris.includes(restUri)).forEach(restNode => {
-                    step = restNode.rest.get?.filter(m => m.to === restUri).at(0)
-                        || restNode.rest.post?.filter(m => m.to === restUri).at(0)
-                        || restNode.rest.put?.filter(m => m.to === restUri).at(0)
-                        || restNode.rest.delete?.filter(m => m.to === restUri).at(0)
-                        || restNode.rest.patch?.filter(m => m.to === restUri).at(0)
-                        || restNode.rest.head?.filter(m => m.to === restUri).at(0);
+                    step = restNode.rest.get?.find(m => m.to === restUri)
+                        || restNode.rest.post?.find(m => m.to === restUri)
+                        || restNode.rest.put?.find(m => m.to === restUri)
+                        || restNode.rest.delete?.find(m => m.to === restUri)
+                        || restNode.rest.patch?.find(m => m.to === restUri)
+                        || restNode.rest.head?.find(m => m.to === restUri);
                 })
             }
             after?.(fileName, step);

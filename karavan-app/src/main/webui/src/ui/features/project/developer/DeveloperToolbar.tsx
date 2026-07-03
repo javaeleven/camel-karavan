@@ -1,4 +1,3 @@
-import React from 'react';
 import {ProjectTitle} from "@features/project/ProjectTitle";
 import {DesignerToggle} from "@features/project/DesignerToggle";
 

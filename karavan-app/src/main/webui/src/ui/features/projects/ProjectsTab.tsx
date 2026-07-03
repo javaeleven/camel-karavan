@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Bullseye, EmptyState, EmptyStateVariant} from '@patternfly/react-core';
 import {InnerScrollContainer, OuterScrollContainer, Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {SearchIcon} from '@patternfly/react-icons';
@@ -100,7 +100,7 @@ export function ProjectsTab() {
                             </Thead>
                             <Tbody>
                                 {projs.map(project => {
-                                    const complexity = complexities.filter(c => c.projectId === project.projectId).at(0) || new ComplexityProject({projectId: project.projectId});
+                                    const complexity = complexities.find(c => c.projectId === project.projectId) || new ComplexityProject({projectId: project.projectId});
                                     const activity = projectsActivities?.[project.projectId];
                                     const activeUsers: string [] = (activity && Array.isArray(activity)) ? activity : [];
                                     const projectCommited = projectsCommited.find(pc => pc.projectId === project.projectId);

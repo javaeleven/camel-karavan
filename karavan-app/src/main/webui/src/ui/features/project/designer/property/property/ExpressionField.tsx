@@ -109,7 +109,7 @@ export function ExpressionField(props: Props) {
 
     function getExpressionProps(): PropertyMeta | undefined {
         const dslName = getValueClassName();
-        return CamelDefinitionApiExt.getElementProperties(dslName).filter(p => p.name === 'expression').at(0);
+        return CamelDefinitionApiExt.getElementProperties(dslName).find(p => p.name === 'expression');
     }
 
     const property: PropertyMeta = props.property;

@@ -1,4 +1,3 @@
-import React from 'react';
 import {SettingsToolbar} from "@features/projects/SettingsToolbar";
 import {useAppConfigStore, useFileStore, useProjectStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";

@@ -22,16 +22,6 @@ export class AccessRole {
     }
 }
 
-export class AccessPassword {
-    currentPassword: string = ''
-    password: string = ''
-    password2: string = ''
-
-
-    public constructor(init?: Partial<AccessPassword>) {
-        Object.assign(this, init);
-    }
-}
 
 export const PLATFORM_ADMIN = 'platform-admin'
 export const PLATFORM_USER = 'platform-user'

@@ -29,7 +29,6 @@ secret:
   keycloak:
     url: "https://localhost"
     realm: "karavan"
-    frontendClientId: "karavan"
     backendClientId: "karavan"
     backendSecret: "secret"
   git:

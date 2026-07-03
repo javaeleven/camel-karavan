@@ -18,15 +18,20 @@ package org.apache.camel.karavan;
 
 public class KaravanConstants {
 
+    // Platform roles + built-in principals (single source; AuthService re-exports for
+    // compatibility). Kept here so infrastructure (cache) never depends on services.
+    public static final String ROLE_ADMIN = "platform-admin";
+    public static final String ROLE_DEVELOPER = "platform-developer";
+    public static final String ROLE_USER = "platform-user";
+    public static final String USER_ADMIN = "admin";
+    public static final String USER_DEVELOPER = "developer";
     public static final String DEV = "dev";
     public static final String DEVMODE_IMAGE = "karavan.devmode.image";
-    public static final String DEVMODE_IMAGE_PULL_POLICY = "karavan.devmode.withImagePullPolicy";
     public static final String ENV_VAR_VERBOSE_OPTION_NAME = "VERBOSE_OPTION";
     public static final String ENV_VAR_RUN_IN_COMPILE_MODE = "RUN_IN_COMPILE_MODE";
     public static final String ENV_VAR_RUN_IN_BUILD_MODE = "RUN_IN_BUILD_MODE";
     public static final String ENV_VAR_VERBOSE_OPTION_VALUE = "--verbose";
     public static final String ENV_VAR_BUILDER_SESSION_ID = "BUILDER_SESSION_ID";
-
     public static final String LABEL_PART_OF = "app.kubernetes.io/part-of";
     public static final String LABEL_TYPE = "org.apache.camel.karavan/type";
     public static final String LABEL_PROJECT_ID = "org.apache.camel.karavan/projectId";
@@ -34,62 +39,29 @@ public class KaravanConstants {
     public static final String LABEL_TAG = "org.apache.camel.karavan/tag";
     public static final String LABEL_DOCKER_STACK_NAMESPACE = "com.docker.stack.namespace";
     public static final String LABEL_SWARM_SERVICE_ID = "com.docker.swarm.service.id";
-
     public static final String BUILDER_SUFFIX = "-builder";
-
     public static final String CAMEL_PREFIX = "camel";
-
     public static final String BUILD_SCRIPT_VOLUME_NAME = "build-script";
     public static final String BUILD_SCRIPT_CONFIG_MAP = "build.sh";
     public static final String BUILD_DOCKER_CONFIG_SECRET = "dockerconfigjson";
     public static final String PRIVATE_KEY_SECRET_KEY = "private-key";
     public static final String KNOWN_HOSTS_SECRET_KEY = "known-hosts";
     public static final String KUBERNETES_YAML_FILENAME = "kubernetes.yaml";
-
     public static final String LABEL_KUBERNETES_RUNTIME = "app.kubernetes.io/runtime";
     public static final String ANNOTATION_COMMIT = "jkube.eclipse.org/git-commit";
-
     public static final String PROPERTY_CAMEL_MAIN_NAME = "camel.main.name";
     public static final String PROPERTY_CAMEL_MAIN_DESCRIPTION = "camel.main.description";
-
     public static final String PROPERTY_PROJECT_ID = "camel.karavan.projectId";
     public static final String PROPERTY_PROJECT_NAME = "camel.karavan.projectName";
     public static final String PROPERTY_PROJECT_NAME_OLD = "camel.karavan.project-name";
     public static final String PROPERTY_PROJECT_LABELS = ".project.labels";
-
     public static final String PROPERTY_NAME_GAV = "camel.jbang.gav";
-    public static final String PROPERTY_MAIN_NAME = "camel.main.name";
     public static final String PROPERTY_CAMEL_RUNTIME = "camel.jbang.runtime";
-
     public static final String PROPERTY_FORMATTER_PROJECT_ID = PROPERTY_CAMEL_MAIN_NAME + "=%s";
     public static final String PROPERTY_FORMATTER_PROJECT_NAME = PROPERTY_CAMEL_MAIN_DESCRIPTION + "=%s";
 
-    public enum CamelRuntime {
-        CAMEL_MAIN("camel-main"),
-        QUARKUS("quarkus"),
-        SPRING_BOOT("spring-boot");
-
-        private final String value;
-
-        public String getValue() {
-            return value;
-        }
-
-        CamelRuntime(String value) {
-            this.value = value;
-        }
-
-        /** Resolve a runtime from its value ("camel-main") or enum name ("CAMEL_MAIN"),
-         *  case-insensitively. Falls back to CAMEL_MAIN for null/blank/unknown. */
-        public static CamelRuntime fromValue(String s) {
-            if (s != null && !s.isBlank()) {
-                for (CamelRuntime r : values()) {
-                    if (r.value.equalsIgnoreCase(s.trim()) || r.name().equalsIgnoreCase(s.trim())) {
-                        return r;
-                    }
-                }
-            }
-            return CAMEL_MAIN;
-        }
+    public static java.util.List<String> getAllRoles() {
+        return java.util.List.of(ROLE_ADMIN, ROLE_DEVELOPER, ROLE_USER);
     }
+
 }

@@ -18,20 +18,28 @@ package org.apache.camel.karavan.generator;
 
 import java.nio.file.Paths;
 
+@lombok.extern.slf4j.Slf4j
 public final class KaravanGenerator {
+
+    // Generation targets (metadata + generated TS are written into these sibling
+    // module dirs; the generator must run from the repo root).
+    static final String TARGET_CORE = "karavan-core/test";
+    static final String TARGET_APP = "karavan-app/src/main/resources";
+    static final String TARGET_VSCODE = "karavan-vscode";
+
 
     public static void main(String[] args) throws Exception {
         String rootPath = args.length > 0 ? args[0] : "";
         boolean all = args.length == 0;
         String[] paths = all
-                ? new String[] {"karavan-core/test", "karavan-app/src/main/resources", "karavan-designer/public", "karavan-vscode"}
-                : new String[] {"karavan-core/test", "karavan-app/src/main/resources"};
-        System.out.println("Generating Root Path: " + rootPath);
+                ? new String[] {TARGET_CORE, TARGET_APP, TARGET_VSCODE}
+                : new String[] {TARGET_CORE, TARGET_APP};
+        log.info("Generating Root Path: {}", rootPath);
         for (String path : paths) {
-            System.out.println("    Generating Path: " + path);
+            log.info("    Generating Path: {}", path);
             AbstractGenerator.clearDirectory(Paths.get(path + "/metadata").toFile());
         }
-        System.out.println("Generating Camel Definitions: " + rootPath);
+        log.info("Generating Camel Definitions: {}", rootPath);
         CamelDefinitionGenerator.generate(rootPath);
         CamelDefinitionApiGenerator.generate(rootPath);
         CamelDefinitionYamlStepGenerator.generate(rootPath);

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Button, Card, CardBody, CardTitle, Flex, FlexItem, FormGroup, FormSelect, FormSelectOption, Grid, GridItem, Label, LabelGroup, Switch} from '@patternfly/react-core';
 import './kamelet.css';
 import {useIntegrationStore} from "../DesignerStore";

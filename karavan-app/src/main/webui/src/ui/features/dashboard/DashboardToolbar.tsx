@@ -1,4 +1,3 @@
-import React from 'react';
 import '@features/project/designer/karavan.css';
 import {PlatformNameForToolbar} from "@shared/ui/PlatformLogos";
 

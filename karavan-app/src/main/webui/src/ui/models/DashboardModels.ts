@@ -70,4 +70,3 @@ export class ProjectMetrics {
     }
 }
 
-export const DashboardLayoutTypes = ['auto', 'manual'] as const;

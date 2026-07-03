@@ -1,5 +1,4 @@
 import {DashboardDevelopmentCard} from "@features/dashboard/development/DashboardDevelopmentCard";
-import * as React from "react";
 import {useState} from "react";
 import {CamelIcon, OpenApiIcon} from "@features/project/designer/icons/KaravanIcons";
 import {DashboardDevelopmentCardAction} from "@features/dashboard/development/DashboardDevelopmentCardAction";

@@ -376,7 +376,7 @@ export class CamelUtil {
         const meta: MetadataLabels = new MetadataLabels({ 'camel.apache.org/kamelet.type': kameletType });
         integration.metadata.labels = meta;
         if (copyFromKameletName !== undefined && copyFromKameletName !== '') {
-            const kamelet = KameletApi.getAllKamelets().filter(k => k.metadata.name === copyFromKameletName).at(0);
+            const kamelet = KameletApi.getAllKamelets().find(k => k.metadata.name === copyFromKameletName);
             if (kamelet) {
                 (integration as any).spec = kamelet.spec;
                 (integration as any).metadata.labels = kamelet.metadata.labels;

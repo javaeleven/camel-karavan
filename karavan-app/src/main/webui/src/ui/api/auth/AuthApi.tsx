@@ -1,6 +1,6 @@
 import axios from "axios";
 import {ErrorEventBus} from "@bus/ErrorEventBus";
-import {AccessPassword, AccessUser} from "@models/AccessModels";
+import {AccessUser} from "@models/AccessModels";
 
 // --- axios base ---
 axios.defaults.timeout = 30000;
@@ -44,8 +44,6 @@ function isNoAuth(cfg: any) {
     return (
         cfg.headers?.["X-Skip-Auth"] === "1" ||
         method === "OPTIONS" ||
-        path.endsWith("/ui/auth/login") ||
-        path.endsWith("/ui/auth/logout") ||
         path.endsWith("/health") ||
         path.endsWith("/q/health")
     );
@@ -83,65 +81,8 @@ export class AuthApi {
             });
     }
 
-    static async login(
-        username: string,
-        password: string,
-        after: (ok: boolean, res: any) => void
-    ) {
-        instance
-            .post("/ui/auth/login", { username, password }, { withCredentials: true })
-            .then((res) => {
-                if (res.status === 200) {
-                    // server may return user; if not, fetch it
-                    if (res.data?.username) {
-                        setCurrentUser(res.data);
-                        after(true, res);
-                    } else {
-                        AuthApi.getMe(() => after(true, res));
-                    }
-                } else {
-                    setCurrentUser(null);
-                    after(false, res);
-                }
-            })
-            .catch((err) => {
-                setCurrentUser(null);
-                after(false, err);
-            });
-    }
-
-    static async logout() {
-        // Tell interceptors to skip CSRF on logout
-        instance
-            .post(
-                "/ui/auth/logout",
-                {},
-                { withCredentials: true, headers: { "X-Skip-Auth": "1" } }
-            )
-            .then((res) => {
-                if (res.status === 204) {
-                    setCurrentUser(null);
-                }
-            })
-            .catch((err) => {
-                console.error(err);
-                setCurrentUser(null);
-            });
-    }
 
 
-    static setPassword(password: AccessPassword, after: (result: boolean, res: any) => void) {
-        instance
-            .post("/ui/auth/password", password)
-            .then((res) => {
-                if (res.status === 200 || res.status === 201) after(true, res);
-                else after(false, res);
-            })
-            .catch((err) => {
-                console.error(err);
-                after(false, err);
-            });
-    }
 
     private static interceptorsInstalled = false;
 

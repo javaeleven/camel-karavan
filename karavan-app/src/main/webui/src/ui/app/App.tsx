@@ -13,6 +13,7 @@ import {useReadinessStore} from "@stores/ReadinessStore";
 import {ErrorEventBus} from "@bus/ErrorEventBus";
 import {useNavigate} from "react-router-dom";
 import {ROUTES} from "@app/navigation/Routes";
+import {consumePostLoginRedirect, rememberPostLoginRedirect} from "@app/navigation/postLoginRedirect";
 import {useBrandStore} from "@stores/BrandStore";
 
 export function App() {
@@ -32,8 +33,10 @@ export function App() {
             // A lost session routes to the SPA login page (which, in OIDC mode,
             // shows the "Sign in with SSO" button) — never auto-redirect to the IdP.
             if (isUnauthorized(err?.response?.status)) {
+                // Remember the current page so login (which may hard-reload in session
+                // mode) returns the user here instead of the dashboard.
+                rememberPostLoginRedirect(window.location.pathname + window.location.search);
                 navigate(ROUTES.LOGIN);
-                if (AuthApi.authType === 'session') window.location.reload();
             }
         });
         return () => {
@@ -54,6 +57,19 @@ export function App() {
             fetchBrand();
         }
     }, [readiness, user]);
+
+    // After (re)login in any mode, return to the page the user was on before being
+    // bounced to login. Handles the OIDC round-trip, which lands on the dashboard
+    // rather than /login (session mode is already restored by ProtectedRoute). The
+    // consume is atomic, so it is a no-op on a normal reload / when already restored.
+    useEffect(() => {
+        if (user) {
+            const target = consumePostLoginRedirect();
+            if (target && target !== window.location.pathname + window.location.search) {
+                navigate(target, {replace: true});
+            }
+        }
+    }, [user]);
 
     function resetNotification() {
         try {

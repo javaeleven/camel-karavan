@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {EditorErrorBoundaryWrapper} from "@features/project/developer/EditorErrorBoundaryWrapper";
 import {CodeEditor} from "../developer/CodeEditor";
 import {useFileStore} from "@stores/ProjectStore";

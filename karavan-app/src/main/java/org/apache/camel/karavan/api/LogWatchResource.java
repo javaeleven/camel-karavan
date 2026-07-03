@@ -60,8 +60,6 @@ public class LogWatchResource extends AbstractApiResource {
         notificationService.sinkCleanup(LogStreamingService.SERVICE_NAME + ":" + type + ":" + name, username, eventSink);
 
         // 2. Hand off the heavy lifting to the thread pool
-        managedExecutor.execute(() -> {
-            logStreamingService.streamLog(type, name, username, eventSink, sse);
-        });
+        managedExecutor.execute(() -> logStreamingService.streamLog(type, name, username, eventSink, sse));
     }
 }

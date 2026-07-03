@@ -1,4 +1,4 @@
-import React, {JSX, useEffect, useRef, useState} from 'react';
+import {JSX, useEffect, useRef, useState} from 'react';
 import {useFileStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";
 import {useTheme} from "@app/theme/ThemeContext";

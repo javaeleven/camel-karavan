@@ -22,7 +22,6 @@ import {getCurrentUser} from "@api/auth/AuthApi";
 export class LogWatchApi {
 
     static async fetchData(type: 'container' | 'build' | 'none', podName: string, controller: AbortController) {
-        console.log("Fetch Started for: " + podName);
         const fetchData = async () => {
             const headers: Record<string, string> = {
                 Accept: "text/event-stream",
@@ -48,8 +47,6 @@ export class LogWatchApi {
                 onmessage(event) {
                     if (event.event !== 'ping') {
                         ProjectEventBus.sendLog('add', event.data);
-                    } else {
-                        console.log('Logger SSE Ping', event);
                     }
                 },
                 onclose() {

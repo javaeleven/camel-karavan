@@ -1,4 +1,4 @@
-import React, {lazy, Suspense, useEffect, useState} from 'react';
+import {lazy, Suspense, useEffect, useState} from 'react';
 import {shallow} from "zustand/shallow";
 import {Bullseye, Spinner} from "@patternfly/react-core";
 import {useFilesStore, useProjectStore} from '@stores/ProjectStore';

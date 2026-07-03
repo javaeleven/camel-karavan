@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {CodeBlock, CodeBlockCode, Label,} from '@patternfly/react-core';
 import {Tbody, Td, Tr} from '@patternfly/react-table';
 import {DeploymentStatus} from "@models/ProjectModels";

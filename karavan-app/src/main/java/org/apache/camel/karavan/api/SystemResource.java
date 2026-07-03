@@ -22,11 +22,13 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.cache.UserGitConfig;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
+import org.apache.camel.karavan.service.ConfigService;
+import org.apache.camel.karavan.model.UserGitConfig;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -34,7 +36,7 @@ import java.util.Objects;
  * these /platform/system/* paths with base64-encoded names/keys; they wire to the
  * existing KubernetesService methods. Without this resource the System "Secrets"
  * and "ConfigMaps" tabs never receive data and spin on loading forever.
- *
+ * <p>
  * NOTE: /platform must be in quarkus.quinoa.ignored-path-prefixes so these are
  * routed to the backend rather than served the SPA shell.
  */
@@ -86,18 +88,33 @@ public class SystemResource extends AbstractApiResource {
         return Response.ok(JsonObject.of("gitUsername", gitUsername, "hasToken", gitToken != null && !gitToken.isBlank())).build();
     }
 
+    /**
+     * Secrets/ConfigMaps are Kubernetes-only. On Docker the UI still calls these
+     * tabs' endpoints — answer empty/204 instead of hitting the k8s client (which
+     * throws "namespace cannot be null" when no cluster is present).
+     */
+    private boolean notInKubernetes() {
+        return !ConfigService.inKubernetes();
+    }
+
     // ---- Secrets ----
 
     @GET
     @Path("/secrets")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getSecrets() {
+        if (notInKubernetes()) {
+            return Response.ok(List.of()).build();
+        }
         return Response.ok(kubernetesService.getSecrets()).build();
     }
 
     @POST
     @Path("/secrets/{name}")
     public Response createSecret(@PathParam("name") String name) {
+        if (notInKubernetes()) {
+            return Response.status(Response.Status.NOT_IMPLEMENTED).entity("Secrets are Kubernetes-only").build();
+        }
         kubernetesService.createSecret(dec(name));
         return Response.ok().build();
     }
@@ -105,6 +122,9 @@ public class SystemResource extends AbstractApiResource {
     @DELETE
     @Path("/secrets/{name}")
     public Response deleteSecret(@PathParam("name") String name) {
+        if (notInKubernetes()) {
+            return Response.status(Response.Status.NOT_IMPLEMENTED).entity("Secrets are Kubernetes-only").build();
+        }
         kubernetesService.deleteSecret(dec(name));
         return Response.noContent().build();
     }
@@ -112,6 +132,9 @@ public class SystemResource extends AbstractApiResource {
     @GET
     @Path("/secrets/{name}/{key}")
     public Response getSecretValue(@PathParam("name") String name, @PathParam("key") String key) {
+        if (notInKubernetes()) {
+            return Response.noContent().build();
+        }
         return Response.ok(kubernetesService.getSecretValue(dec(name), dec(key))).build();
     }
 
@@ -119,6 +142,9 @@ public class SystemResource extends AbstractApiResource {
     @Path("/secrets/{name}/{key}")
     @Consumes(MediaType.TEXT_PLAIN)
     public Response setSecretValue(@PathParam("name") String name, @PathParam("key") String key, String value) {
+        if (notInKubernetes()) {
+            return Response.status(Response.Status.NOT_IMPLEMENTED).entity("Secrets are Kubernetes-only").build();
+        }
         kubernetesService.setSecretValue(dec(name), dec(key), value);
         return Response.ok().build();
     }
@@ -126,6 +152,9 @@ public class SystemResource extends AbstractApiResource {
     @DELETE
     @Path("/secrets/{name}/{key}")
     public Response deleteSecretValue(@PathParam("name") String name, @PathParam("key") String key) {
+        if (notInKubernetes()) {
+            return Response.status(Response.Status.NOT_IMPLEMENTED).entity("Secrets are Kubernetes-only").build();
+        }
         kubernetesService.deleteSecretValue(dec(name), dec(key));
         return Response.noContent().build();
     }
@@ -136,12 +165,18 @@ public class SystemResource extends AbstractApiResource {
     @Path("/configmaps")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getConfigMaps() {
+        if (notInKubernetes()) {
+            return Response.ok(List.of()).build();
+        }
         return Response.ok(kubernetesService.getConfigMaps()).build();
     }
 
     @POST
     @Path("/configmaps/{name}")
     public Response createConfigMap(@PathParam("name") String name) {
+        if (notInKubernetes()) {
+            return Response.status(Response.Status.NOT_IMPLEMENTED).entity("ConfigMaps are Kubernetes-only").build();
+        }
         kubernetesService.createConfigMap(dec(name));
         return Response.ok().build();
     }
@@ -149,6 +184,9 @@ public class SystemResource extends AbstractApiResource {
     @DELETE
     @Path("/configmaps/{name}")
     public Response deleteConfigMap(@PathParam("name") String name) {
+        if (notInKubernetes()) {
+            return Response.status(Response.Status.NOT_IMPLEMENTED).entity("ConfigMaps are Kubernetes-only").build();
+        }
         kubernetesService.deleteConfigMap(dec(name));
         return Response.noContent().build();
     }
@@ -156,6 +194,9 @@ public class SystemResource extends AbstractApiResource {
     @GET
     @Path("/configmaps/{name}/{key}")
     public Response getConfigMapValue(@PathParam("name") String name, @PathParam("key") String key) {
+        if (notInKubernetes()) {
+            return Response.noContent().build();
+        }
         String n = dec(name), k = dec(key);
         String value = kubernetesService.getConfigMaps().stream()
                 .filter(cm -> Objects.equals(cm.getName(), n))
@@ -169,6 +210,9 @@ public class SystemResource extends AbstractApiResource {
     @Path("/configmaps/{name}/{key}")
     @Consumes(MediaType.TEXT_PLAIN)
     public Response setConfigMapValue(@PathParam("name") String name, @PathParam("key") String key, String value) {
+        if (notInKubernetes()) {
+            return Response.status(Response.Status.NOT_IMPLEMENTED).entity("ConfigMaps are Kubernetes-only").build();
+        }
         kubernetesService.setConfigMapValue(dec(name), dec(key), value);
         return Response.ok().build();
     }
@@ -176,6 +220,9 @@ public class SystemResource extends AbstractApiResource {
     @DELETE
     @Path("/configmaps/{name}/{key}")
     public Response deleteConfigMapValue(@PathParam("name") String name, @PathParam("key") String key) {
+        if (notInKubernetes()) {
+            return Response.status(Response.Status.NOT_IMPLEMENTED).entity("ConfigMaps are Kubernetes-only").build();
+        }
         kubernetesService.deleteConfigMapValue(dec(name), dec(key));
         return Response.noContent().build();
     }

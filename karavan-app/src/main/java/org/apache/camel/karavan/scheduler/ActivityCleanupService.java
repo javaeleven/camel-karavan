@@ -15,7 +15,8 @@ public class ActivityCleanupService {
     @Inject
     KaravanCache karavanCache;
 
-    @Scheduled(every = "2m") // Run every 2 minutes
+    @Scheduled(every = "2m")
+        // Run every 2 minutes
     void deleteUsersActivities() {
 
         karavanCache.getCopyUsersWorking().entrySet().stream()

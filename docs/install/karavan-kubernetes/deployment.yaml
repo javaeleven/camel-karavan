@@ -53,11 +53,6 @@ spec:
             secretKeyRef:
               key: "karavan.keycloak.realm"
               name: "karavan"
-        - name: "KARAVAN_KEYCLOAK_FRONTEND_CLIENTID"
-          valueFrom:
-            secretKeyRef:
-              key: "karavan.keycloak.frontend.clientId"
-              name: "karavan"
         - name: "KARAVAN_KEYCLOAK_BACKEND_CLIENTID"
           valueFrom:
             secretKeyRef:

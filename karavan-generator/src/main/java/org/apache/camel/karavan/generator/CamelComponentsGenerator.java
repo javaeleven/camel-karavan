@@ -20,7 +20,6 @@ import io.vertx.core.json.JsonObject;
 import org.apache.camel.builder.RouteBuilder;
 
 import java.io.*;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 

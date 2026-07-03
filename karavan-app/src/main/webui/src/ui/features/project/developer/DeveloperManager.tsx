@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import {useEffect} from 'react';
 import {useFileStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";
 import {PropertiesEditor} from "./PropertiesEditor";

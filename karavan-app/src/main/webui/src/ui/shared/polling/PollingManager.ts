@@ -28,9 +28,6 @@ export const startPolling = (
         }, interval);
 
         activeTimers.set(pollingId, timerId);
-        console.log(`[PollingManager] STARTED polling for ${pollingId}. Count: 1`);
-    } else {
-        console.log(`[PollingManager] Polling already active for ${pollingId}. Count: ${count}`);
     }
 };
 
@@ -49,9 +46,6 @@ export const stopPolling = (pollingId: string): void => {
             window.clearInterval(timerId);
             activeTimers.delete(pollingId);
             consumerCounts.delete(pollingId); // Clean up the count map
-            console.log(`[PollingManager] STOPPED polling for ${pollingId}. Count: 0`);
         }
-    } else {
-        console.log(`[PollingManager] Consumer left ${pollingId}. Remaining count: ${count}`);
     }
 };

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {capitalize, Content, Nav, NavItem, NavList,} from '@patternfly/react-core';
 import {RightPanel} from "@shared/ui/RightPanel";
 import {BUILD_IN_PROJECTS} from "@models/ProjectModels";

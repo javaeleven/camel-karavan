@@ -39,7 +39,9 @@ export class ProjectService {
             if (res.status === 200 || res.status === 201) {
                 ProjectEventBus.sendLog('set', '');
                 useLogStore.setState({podName: res.data})
-                useProjectStore.setState({tabIndex: 'log'})
+                // NOTE: do NOT switch tabIndex — the 'log' main tab is gone (logs live
+                // in the bottom console, which auto-opens on devModeIsRunning) and an
+                // unknown tabIndex blanks the main panel.
             } else {
                 var resData = (res as any)?.response?.data;
                 var error = resData?.message ? resData?.message : res.statusText;
@@ -157,7 +159,7 @@ export class ProjectService {
                 }
                 after?.(res)
             } else {
-                // console.log(res) //TODO show notification
+                EventBus.sendAlert('Error saving file', res.statusText, 'warning')
             }
         })
     }

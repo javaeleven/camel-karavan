@@ -16,32 +16,17 @@
  */
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class CamelStatusRequest {
 
     private String projectId;
     private String containerName;
-
-    public CamelStatusRequest() {
-    }
-
-    public CamelStatusRequest(String projectId, String containerName) {
-        this.projectId = projectId;
-        this.containerName = containerName;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
-
-    public String getContainerName() {
-        return containerName;
-    }
-
-    public void setContainerName(String containerName) {
-        this.containerName = containerName;
-    }
 }

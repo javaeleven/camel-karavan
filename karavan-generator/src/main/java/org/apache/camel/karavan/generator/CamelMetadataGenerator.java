@@ -147,7 +147,7 @@ public final class CamelMetadataGenerator extends AbstractGenerator {
         camelModel.append(getMetadataCode("CamelModelMetadata", classProps, stepNames, "model"));
 
         // add Sensitive keys
-        List<String> sk = new ArrayList(SensitiveUtils.getSensitiveKeys());
+        List<String> sk = new ArrayList<>(SensitiveUtils.getSensitiveKeys());
         camelModel.append("export const SensitiveKeys: string[] = [\n");
         for (int i = 0; i < sk.size(); i++) {
             camelModel.append("    \"").append(sk.get(i)).append("\"").append(i < sk.size() - 1 ? "," : "").append("\n");
@@ -207,7 +207,8 @@ public final class CamelMetadataGenerator extends AbstractGenerator {
                     if ("inheritErrorHandler".equals(pname) && p == null) {
                     } else {
                         String typeInCatalog = getPropertyTypeInCatalog(stepName, pname);
-                        PropertyMeta pm = getAttributeType(pname, new JsonObject((Map) v));
+                        @SuppressWarnings("unchecked")
+                        PropertyMeta pm = getAttributeType(pname, new JsonObject((Map<String, Object>) v));
                         String displayName = p != null && p.containsKey("displayName") ? p.getString("displayName") : pname;
                         String desc = p != null && p.containsKey("description") ? p.getString("description") : pname;
                         String en = p != null && p.containsKey("enum") ? p.getString("enum").replace("[", "").replace("]", "") : "";
@@ -235,7 +236,9 @@ public final class CamelMetadataGenerator extends AbstractGenerator {
                 JsonObject exchangeProperties = new JsonObject(json).getJsonObject("exchangeProperties");
                 if (exchangeProperties != null) {
                     exchangeProperties.getMap().forEach((ep, eps) -> {
-                        Map<String, String> vals = (HashMap<String, String>) eps;
+                        // catalog JSON: each exchange property is a map of string attributes
+                        @SuppressWarnings("unchecked")
+                        Map<String, String> vals = (Map<String, String>) eps;
                         code.append(String.format("        new ExchangePropertyMeta('%s', '%s', '%s', '%s', \"%s\"),\n",
                                 ep, vals.get("displayName"), vals.get("label"), vals.get("javaType"), vals.get("description")));
                     });
@@ -243,7 +246,6 @@ public final class CamelMetadataGenerator extends AbstractGenerator {
 
                 code.append("    ]),\n");
             } else {
-//                System.out.println("Empty JSON for class: " + name + " as a stepName " + stepName);
             }
         });
         code.append("]\n\n");
@@ -261,7 +263,7 @@ public final class CamelMetadataGenerator extends AbstractGenerator {
         ) {
             String javaName = p.getString("javaType");
             try {
-                Class clazz = Class.forName(javaName);
+                Class<?> clazz = Class.forName(javaName);
                 if (clazz.isInterface() && (
                         clazz.getPackageName().equals("org.apache.camel") || clazz.getPackageName().equals("org.apache.camel.spi")
                 )) return javaName;

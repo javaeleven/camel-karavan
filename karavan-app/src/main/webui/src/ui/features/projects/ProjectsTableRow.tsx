@@ -1,4 +1,3 @@
-import React from 'react';
 import {Badge, Button, Flex, FlexItem, Tooltip} from '@patternfly/react-core';
 import '@features/projects/Complexity.css';
 import {Td, Tr} from "@patternfly/react-table";
@@ -71,6 +70,11 @@ function ProjectsTableRow(props: Props) {
                 <div style={{display: 'flex', flexDirection: 'column', alignItems: 'start', justifyContent: 'start', gap: '3px'}}>
                     <div>
                         {project.name}
+                        {project.createdBy &&
+                            <span style={{marginLeft: '8px', fontSize: 'smaller', color: 'var(--pf-t--global--text--color--subtle)'}}>
+                                by {project.createdBy}
+                            </span>
+                        }
                     </div>
                     {labels.length > 0 &&
                         <div style={{display: 'flex', flexDirection: 'row', gap: '3px'}}>

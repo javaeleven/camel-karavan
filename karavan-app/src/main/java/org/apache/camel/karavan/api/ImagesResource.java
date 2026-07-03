@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.model.ContainerImage;
 import org.apache.camel.karavan.model.RegistryConfig;
@@ -40,19 +41,16 @@ import java.util.List;
 import static org.apache.camel.karavan.KaravanEvents.CMD_PULL_IMAGES;
 
 @Path("/ui/image")
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ImagesResource extends AbstractApiResource {
 
-    @Inject
-    DockerService dockerService;
+    private final DockerService dockerService;
 
-    @Inject
-    RegistryService registryService;
+    private final RegistryService registryService;
 
-    @Inject
-    ProjectService projectService;
+    private final ProjectService projectService;
 
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -93,7 +91,7 @@ public class ImagesResource extends AbstractApiResource {
     @Path("/project/{imageName}")
     @Authenticated
     public Response deleteImage(@PathParam("imageName") String imageName) {
-        imageName= new String(Base64.decode(imageName));
+        imageName = new String(Base64.decode(imageName));
         if (ConfigService.inKubernetes()) {
             return Response.ok().build();
         } else {
@@ -107,7 +105,7 @@ public class ImagesResource extends AbstractApiResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
     @Authenticated
-    public Response share(HashMap<String, String> params)  {
+    public Response share(HashMap<String, String> params) {
         try {
             eventBus.publish(CMD_PULL_IMAGES, JsonObject.mapFrom(params));
             return Response.ok().build();

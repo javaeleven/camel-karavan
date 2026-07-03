@@ -25,13 +25,13 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.PodContainerStatus;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.docker.DockerUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.apache.camel.karavan.model.PodContainerStatus;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -41,21 +41,18 @@ import java.util.List;
 
 import static org.apache.camel.karavan.KaravanEvents.*;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DockerStatusListener {
-    private static final Logger LOGGER = Logger.getLogger(PodContainerStatusListener.class.getName());
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final KaravanConfig config;
 
-    @Inject
-    DockerService dockerService;
+    private final DockerService dockerService;
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @ConsumeEvent(value = CMD_COLLECT_CONTAINER_STATISTIC, blocking = true)
     void collectContainersStatistics(JsonObject data) {
@@ -68,10 +65,10 @@ public class DockerStatusListener {
     void cleanContainersStatuses(String data) {
         try {
             List<PodContainerStatus> statusesInDocker = dockerService.isInSwarmMode()
-                ? getServicesStatuses()
-                : getContainersStatuses();
+                    ? getServicesStatuses()
+                    : getContainersStatuses();
             List<String> namesInDocker = statusesInDocker.stream().map(PodContainerStatus::getContainerName).toList();
-            List<PodContainerStatus> statusesInCache = karavanCache.getPodContainerStatuses(environment);
+            List<PodContainerStatus> statusesInCache = karavanCache.getPodContainerStatuses(config.environment());
             // clean deleted
             statusesInCache.stream()
                     .filter(cs -> !checkTransit(cs))
@@ -80,7 +77,7 @@ public class DockerStatusListener {
                         eventBus.publish(POD_CONTAINER_DELETED, JsonObject.mapFrom(containerStatus));
                     });
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
         }
     }
 
@@ -94,7 +91,7 @@ public class DockerStatusListener {
     public List<PodContainerStatus> getContainersStatuses() {
         List<PodContainerStatus> result = new ArrayList<>();
         dockerService.getAllContainers().forEach(container -> {
-            PodContainerStatus podContainerStatus = DockerUtils.getContainerStatus(container, environment);
+            PodContainerStatus podContainerStatus = DockerUtils.getContainerStatus(container, config.environment());
             result.add(podContainerStatus);
         });
         return result;
@@ -106,7 +103,7 @@ public class DockerStatusListener {
             var containers = dockerService.findContainersByServiceId(service.getId());
             if (containers != null) {
                 containers.forEach(container -> {
-                    PodContainerStatus podContainerStatus = DockerUtils.getServiceStatus(service, container, environment);
+                    PodContainerStatus podContainerStatus = DockerUtils.getServiceStatus(service, container, config.environment());
                     result.add(podContainerStatus);
                 });
             }

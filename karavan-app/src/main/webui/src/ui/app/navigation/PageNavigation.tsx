@@ -28,7 +28,7 @@ function PageNavigation() {
     const secondMenu = getNavigationSecondMenu(config.environment, config.infrastructure);
 
     React.useEffect(() => {
-        var page = location.pathname?.split("/").filter(Boolean)[0];
+        var page = location.pathname?.split("/").find(Boolean);
         if (page === 'projects') {
             var projectId = location.pathname?.split("/").filter(Boolean)[1];
             if (BUILD_IN_PROJECTS.includes(projectId)) {

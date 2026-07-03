@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, {useEffect} from 'react';
+import {useEffect} from 'react';
 import {Button} from '@patternfly/react-core';
 import {useProjectStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";

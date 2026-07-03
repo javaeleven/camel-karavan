@@ -105,6 +105,11 @@ export class Project {
     gitBranch?: string;
     // Username that configured the remote; only the owner may configure/push/pull it.
     gitOwner?: string;
+    // Audit + access: creator (stamped server-side), creation time (epoch ms) and the
+    // users assigned to manage this project (creator/assignees/admin may modify it).
+    createdBy?: string;
+    createdAt?: number;
+    assignedUsers?: string[];
 
     public constructor(projectId: string, name: string, lastCommit: string, type: string);
     public constructor(init?: Partial<Project>);

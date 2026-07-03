@@ -8,6 +8,7 @@
     "module": "es2022",
     "declaration": true,
     "outDir": "./lib",
+    "rootDir": "src/core",
     "strict": true,
     "lib": [
       "dom",
@@ -16,7 +17,7 @@
       "ES2021",
       "ES2021.String"
     ],
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true
   },

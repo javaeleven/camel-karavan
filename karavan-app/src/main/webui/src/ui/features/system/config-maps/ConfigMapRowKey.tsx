@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Button, Label, TextArea, TextInput} from '@patternfly/react-core';
 import {Td, Tr} from '@patternfly/react-table';
 import TimesIcon from "@patternfly/react-icons/dist/esm/icons/times-icon";

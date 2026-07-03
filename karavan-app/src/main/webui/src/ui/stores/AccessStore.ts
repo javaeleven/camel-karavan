@@ -12,8 +12,6 @@ interface AccessState {
     setShowUserModal: (showUserModal: boolean) => void;
     showRoleModal: boolean;
     setShowRoleModal: (showUserModal: boolean) => void;
-    showPasswordModal: boolean;
-    setShowPasswordModal: (showPasswordModal: boolean) => void;
     currentUser?: AccessUser;
     setCurrentUser: (currentUser?: AccessUser) => void;
 }
@@ -38,10 +36,6 @@ export const useAccessStore = createWithEqualityFn<AccessState>((set) => ({
     showRoleModal: false,
     setShowRoleModal: (showRoleModal: boolean) => {
         set({showRoleModal: showRoleModal});
-    },
-    showPasswordModal: false,
-    setShowPasswordModal: (showPasswordModal: boolean) => {
-        set({showPasswordModal: showPasswordModal});
     },
     setCurrentUser: (currentUser?: AccessUser) => {
         set({currentUser: currentUser});

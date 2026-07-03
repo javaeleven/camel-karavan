@@ -1,0 +1,16 @@
+pluginManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+        maven { url = uri('https://repository.apache.org/content/repositories/snapshots/') }
+    }
+    plugins {
+        // Quarkus Gradle plugin version sourced from gradle.properties.
+        id 'io.quarkus' version "${quarkusPluginVersion}"
+    }
+}
+
+rootProject.name = 'karavan'
+
+include 'karavan-generator'
+include 'karavan-app'

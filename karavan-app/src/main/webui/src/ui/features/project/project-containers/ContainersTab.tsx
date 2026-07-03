@@ -1,4 +1,4 @@
-import React, {ReactElement} from 'react';
+import {ReactElement} from 'react';
 import {Content, Divider} from "@patternfly/react-core";
 import {useAppConfigStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";

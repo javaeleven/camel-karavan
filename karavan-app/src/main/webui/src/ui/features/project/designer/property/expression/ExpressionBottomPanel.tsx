@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
 import {ClipboardCopy, Content, } from '@patternfly/react-core';
 import './ExpressionEditor.css'
 import {Table, Tbody, Td, Tr} from "@patternfly/react-table";
@@ -28,8 +27,8 @@ export function ExpressionBottomPanel(props: Props) {
 
     const {dslLanguage} = props;
     const language = dslLanguage?.[0];
-    const vars: Context[] = ExpressionVariables.filter(e => e.name === language)?.[0]?.information || [];
-    const funcs: Context[] = ExpressionFunctions.filter(e => e.name === language)?.at(0)?.information || []
+    const vars: Context[] = ExpressionVariables.find(e => e.name === language)?.information || [];
+    const funcs: Context[] = ExpressionFunctions.find(e => e.name === language)?.information || []
     const showVars = vars.length > 0;
     const showFuncs = funcs.length > 0;
 

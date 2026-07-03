@@ -30,10 +30,13 @@ REGISTRY     ?= localhost:5005
 IMAGE_NAME   ?= camel-karavan
 IMAGE_TAG    ?= dev
 IMAGE        := $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
+# Target CPU arch for the app image. Jib defaults to linux/amd64 regardless of build
+# host, so this MUST match the cluster nodes (EKS is arm64/Graviton) or the pod fails
+# with "exec /usr/bin/java: exec format error". Override for an amd64 cluster.
+JIB_PLATFORM ?= linux/arm64
 
-# Dev-mode build container (karavan-devmode/Dockerfile). karavan-app starts
-# integration build/run containers from THIS image, so it must be pushed to the
-# same registry and its URL passed to the app via KARAVAN_DEVMODE_IMAGE.
+# Dev-mode image: BUILT IN-APP by karavan-app itself (Jib Core) at startup and
+# pushed to $(REGISTRY) — no local build target needed (see docs/DEVMODE_IMAGE_JIB.md).
 DEVMODE_IMAGE_NAME ?= camel-karavan-devmode
 DEVMODE_IMAGE      := $(REGISTRY)/$(DEVMODE_IMAGE_NAME):$(IMAGE_TAG)
 
@@ -47,7 +50,7 @@ LOCAL_PORT   ?= 18080
 
 HELM         ?= helm
 KUBECTL      ?= kubectl
-MVN          ?= mvn
+GRADLE       ?= ./gradlew
 NPM          ?= npm
 DOCKER       ?= docker
 
@@ -75,8 +78,6 @@ AWS_PROFILE_FLAG := $(if $(strip $(AWS_PROFILE)),--profile $(strip $(AWS_PROFILE
 OIDC_CLIENT_ID     ?=
 OIDC_CLIENT_SECRET ?=
 
-GENERATOR_MAIN := org.apache.camel.karavan.generator.KaravanGenerator
-
 .DEFAULT_GOAL := help
 SHELL := /bin/bash
 
@@ -92,7 +93,11 @@ help: ## Show this help
 # ==========================================================================
 .PHONY: generate
 generate: ## STEP 1: generate Camel TS models/API into karavan-core (run from repo root)
-	$(MVN) clean compile exec:java -Dexec.mainClass="$(GENERATOR_MAIN)" -f karavan-generator
+	# Multi-version catalog: `make generate CAMEL_VERSION=4.14.3` regenerates the
+	# designer catalog (components + kamelets + DSL model) for that Camel version.
+	# Default (no var) uses the LTS pinned in gradle.properties.
+	$(GRADLE) :karavan-generator:run \
+		$(if $(CAMEL_VERSION),-PcamelVersion=$(CAMEL_VERSION) -PcamelKameletsVersion=$(CAMEL_VERSION))
 
 .PHONY: core
 core: ## STEP 2: build/install the TS core library (runs build + Mocha tests)
@@ -100,16 +105,57 @@ core: ## STEP 2: build/install the TS core library (runs build + Mocha tests)
 
 .PHONY: app
 app: ## STEP 3: package the Quarkus app + SPA (uber-jar, public profile)
-	$(MVN) clean package -f karavan-app -Dquarkus.profile=public
+	$(GRADLE) :karavan-app:build -Dquarkus.profile=public
 
 .PHONY: build
 build: generate core app ## Full local build chain (generate -> core -> app)
 
+# ==========================================================================
+# Local dev mode (deploy/compose.yaml: postgres + keycloak + registry on localhost)
+# ==========================================================================
+# Datasource creds for LOCAL dev only (compose.yaml + dev target defaults;
+# production values come from the Helm chart / KARAVAN_* env).
+KARAVAN_DATASOURCE_USERNAME ?= karavan
+KARAVAN_DATASOURCE_PASSWORD ?= K@r@v@n418
+DEV_REGISTRY      := localhost:5555
+DEV_DEVMODE_IMAGE := $(DEV_REGISTRY)/karavan/karavan-devmode:$(VERSION)
+
+.PHONY: compose-up
+compose-up: ## Start local dev dependencies (postgres:5432 + registry:5555), wait until healthy
+	KARAVAN_DATASOURCE_USERNAME=$(KARAVAN_DATASOURCE_USERNAME) \
+	KARAVAN_DATASOURCE_PASSWORD='$(KARAVAN_DATASOURCE_PASSWORD)' \
+	$(DOCKER) compose --env-file /dev/null -f deploy/compose.yaml up -d --wait
+
+.PHONY: compose-down
+compose-down: ## Stop local dev dependencies (data volume kept in ./postgres-data)
+	$(DOCKER) compose --env-file /dev/null -f deploy/compose.yaml down
+
+.PHONY: dev
+dev: compose-up ## Run the app in Quarkus DEV MODE against the deploy/compose.yaml services
+	# Host-run dev mode: DB + registry via localhost; the in-app Jib build pushes
+	# the devmode image to localhost:5555 and the Docker daemon pulls the same ref.
+	KARAVAN_DATASOURCE_URL="jdbc:postgresql://localhost:5432/karavan" \
+	KARAVAN_DATASOURCE_USERNAME=$(KARAVAN_DATASOURCE_USERNAME) \
+	KARAVAN_DATASOURCE_PASSWORD='$(KARAVAN_DATASOURCE_PASSWORD)' \
+	KARAVAN_CONTAINER_IMAGE_REGISTRY=$(DEV_REGISTRY) \
+	KARAVAN_DEVMODE_IMAGE=$(DEV_DEVMODE_IMAGE) \
+	$(GRADLE) :karavan-app:quarkusDev -Dquarkus.profile=local,public
+
 .PHONY: image-build
-image-build: ## Build the container image $(IMAGE) (Auth0-aligned SPA) via Quarkus
-	$(MVN) -B -ntp -DskipTests package -f karavan-app -Dquarkus.profile=public \
+image-build: ## Build the container image $(IMAGE) (Auth0-aligned SPA) via Quarkus Jib
+	# Jib loads a single-arch $(JIB_PLATFORM) image into the local Docker daemon for
+	# image-push. The platform MUST match the target cluster (jib defaults to amd64).
+	# 'clean' + --rerun-tasks + --no-build-cache force Quinoa to rebuild the SPA every
+	# time; otherwise Gradle marks quarkusBuild UP-TO-DATE and ships a STALE frontend
+	# in the image (source edits silently missing from the deployed app).
+	$(GRADLE) --no-build-cache clean :karavan-app:quarkusBuild --rerun-tasks \
+		-Dquarkus.profile=public \
 		-Dquarkus.container-image.build=true \
+		-Dquarkus.jib.platforms=$(JIB_PLATFORM) \
 		-Dquarkus.container-image.image=$(IMAGE)
+	# The rebuilt image takes over the $(IMAGE) tag, leaving the previous one dangling
+	# (untagged). Drop dangling images so a stale one can never be run by mistake.
+	-$(DOCKER) image prune -f
 
 .PHONY: image-push
 image-push: ## Push $(IMAGE) to its registry
@@ -118,13 +164,8 @@ image-push: ## Push $(IMAGE) to its registry
 .PHONY: image
 image: image-build image-push ## Build AND push the app image $(IMAGE)
 
-.PHONY: devmode-image
-devmode-image: ## Build AND push the dev-mode build container $(DEVMODE_IMAGE)
-	$(DOCKER) build -t $(DEVMODE_IMAGE) -f karavan-devmode/Dockerfile karavan-devmode
-	$(DOCKER) push $(DEVMODE_IMAGE)
-
 .PHONY: images
-images: image devmode-image ## Build AND push ALL images (app + dev-mode) to $(REGISTRY)
+images: image ## Build AND push the app image (devmode image is built in-app at startup)
 
 # ---- Registry helpers ----------------------------------------------------
 .PHONY: local-registry
@@ -208,7 +249,7 @@ logs: ## Tail the Karavan app logs
 
 .PHONY: port-forward
 port-forward: ## Forward the app to http://localhost:8080
-	@echo "Karavan UI: http://localhost:8080  (admin / see application.properties)"
+	@echo "Karavan UI: http://localhost:8080  (sign in with SSO)"
 	$(KUBECTL) -n $(NAMESPACE) port-forward svc/$(RELEASE) 8080:80
 
 .PHONY: test

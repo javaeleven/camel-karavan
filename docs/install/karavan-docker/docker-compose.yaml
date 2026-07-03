@@ -47,7 +47,9 @@ services:
     networks:
       - karavan
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      # Postgres 18+ images store data in a major-version subdirectory, so the
+      # mount must be the parent dir (/var/lib/postgresql), not /.../data.
+      - ./postgres-data:/var/lib/postgresql
 
   registry:
     container_name: registry

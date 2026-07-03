@@ -18,10 +18,10 @@ package org.apache.camel.karavan.docker;
 
 import com.github.dockerjava.api.model.*;
 import io.smallrye.mutiny.tuples.Tuple2;
-import org.apache.camel.karavan.cache.ContainerPort;
-import org.apache.camel.karavan.cache.ContainerType;
-import org.apache.camel.karavan.cache.PodContainerStatus;
+import org.apache.camel.karavan.model.ContainerPort;
+import org.apache.camel.karavan.model.ContainerType;
 import org.apache.camel.karavan.model.DockerHealthCheckDefinition;
+import org.apache.camel.karavan.model.PodContainerStatus;
 
 import java.text.DecimalFormat;
 import java.time.Duration;
@@ -40,7 +40,8 @@ public class DockerUtils {
     protected static final DecimalFormat formatGiB = new DecimalFormat("0.00");
     protected static final Map<String, Tuple2<Long, Long>> previousStats = new ConcurrentHashMap<>();
 
-    private static final Map<String, Long> UNIT_MULTIPLIERS = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);;
+    private static final Map<String, Long> UNIT_MULTIPLIERS = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
     static {
         UNIT_MULTIPLIERS.put("b", 1L);
         UNIT_MULTIPLIERS.put("k", 1024L);
@@ -85,7 +86,7 @@ public class DockerUtils {
         return new HealthCheck();
     }
 
-     public static long durationNanos(String s) {
+    public static long durationNanos(String s) {
         if (Pattern.compile("\\d+d\\s").matcher(s).find()) {
             int idxSpace = s.indexOf(" ");
             s = "P" + s.substring(0, idxSpace) + "T" + s.substring(idxSpace + 1);
@@ -132,9 +133,9 @@ public class DockerUtils {
         String name = container.getNames()[0].replace("/", "");
         var spec = service.getSpec();
         var endpoint = spec != null ? spec.getEndpointSpec() : null;
-        List<PortConfig> specPorts = endpoint  != null ? endpoint.getPorts() : List.of();
+        List<PortConfig> specPorts = endpoint != null ? endpoint.getPorts() : List.of();
         List<ContainerPort> ports = specPorts != null
-                ? specPorts.stream().map(p -> new ContainerPort(p.getTargetPort(), p.getPublishedPort(), p.getPublishMode() !=null ? p.getPublishMode().name() : "")).collect(Collectors.toList())
+                ? specPorts.stream().map(p -> new ContainerPort(p.getTargetPort(), p.getPublishedPort(), p.getPublishMode() != null ? p.getPublishMode().name() : "")).collect(Collectors.toList())
                 : new ArrayList<>();
         List<PodContainerStatus.Command> commands = getContainerCommand(container.getState());
         ContainerType type = getContainerType(container.getLabels());

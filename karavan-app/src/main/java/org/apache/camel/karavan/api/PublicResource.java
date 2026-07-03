@@ -23,12 +23,12 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.docker.DockerHealthCheck;
 import org.apache.camel.karavan.kubernetes.KubernetesStatusService;
 import org.apache.camel.karavan.loader.StartupLoader;
 import org.apache.camel.karavan.service.ConfigService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.HealthCheckResponse;
 
 import java.util.List;
@@ -36,19 +36,16 @@ import java.util.Map;
 import java.util.Objects;
 
 @Path("/public")
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class PublicResource {
 
-    @Inject
-    StartupLoader startupLoader;
+    private final StartupLoader startupLoader;
 
-    @Inject
-    KubernetesStatusService kubernetesStatusService;
+    private final KubernetesStatusService kubernetesStatusService;
 
-    @Inject
-    DockerHealthCheck dockerHealthCheck;
+    private final DockerHealthCheck dockerHealthCheck;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final KaravanConfig config;
 
     @GET
     @Path("/readiness")
@@ -64,7 +61,7 @@ public class PublicResource {
         return Response.ok(Map.of(
                 "status", list.stream().allMatch(h -> Objects.equals(h.getStatus(), HealthCheckResponse.Status.UP)),
                 "checks", list,
-                "environment", environment
+                "environment", config.environment()
         )).build();
     }
 }

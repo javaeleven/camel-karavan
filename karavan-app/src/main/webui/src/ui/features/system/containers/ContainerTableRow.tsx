@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Badge, Button, CodeBlock, CodeBlockCode, Content, Flex, FlexItem, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner, Tooltip} from '@patternfly/react-core';
 import '@features/project/designer/karavan.css';
 import {Tbody, Td, Tr} from "@patternfly/react-table";

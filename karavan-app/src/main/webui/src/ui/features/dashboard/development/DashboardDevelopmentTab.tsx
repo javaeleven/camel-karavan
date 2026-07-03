@@ -1,4 +1,3 @@
-import React from 'react';
 import './DashboardDevelopment.css'
 import {DashboardDevelopmentRefresher} from "@features/dashboard/development/DashboardDevelopmentRefresher";
 import {Drawer, DrawerContent, DrawerContentBody, Grid, GridItem} from "@patternfly/react-core";

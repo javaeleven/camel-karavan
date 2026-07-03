@@ -1,4 +1,3 @@
-import * as React from 'react';
 import {useProjectStore} from "@stores/ProjectStore";
 
 interface Props {

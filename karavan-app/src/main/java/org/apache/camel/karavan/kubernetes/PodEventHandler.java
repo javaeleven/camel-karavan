@@ -25,9 +25,10 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
-import org.apache.camel.karavan.cache.ContainerType;
-import org.apache.camel.karavan.cache.PodContainerStatus;
-import org.jboss.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.model.CamelRuntime;
+import org.apache.camel.karavan.model.ContainerType;
+import org.apache.camel.karavan.model.PodContainerStatus;
 
 import java.util.List;
 import java.util.Map;
@@ -37,12 +38,8 @@ import static org.apache.camel.karavan.KaravanConstants.*;
 import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_DELETED;
 import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_UPDATED;
 
+@Slf4j
 public class PodEventHandler implements ResourceEventHandler<Pod> {
-
-    private static final Logger LOGGER = Logger.getLogger(PodEventHandler.class.getName());
-
-    private final KubernetesStatusService kubernetesStatusService;
-    private final EventBus eventBus;
 
     public static final Map<String, String> DEFAULT_CONTAINER_RESOURCES = Map.of(
             "requests.memory", "256Mi",
@@ -50,6 +47,8 @@ public class PodEventHandler implements ResourceEventHandler<Pod> {
             "limits.memory", "2048Mi",
             "limits.cpu", "2000m"
     );
+    private final KubernetesStatusService kubernetesStatusService;
+    private final EventBus eventBus;
 
     public PodEventHandler(KubernetesStatusService kubernetesStatusService, EventBus eventBus) {
         this.kubernetesStatusService = kubernetesStatusService;
@@ -59,20 +58,20 @@ public class PodEventHandler implements ResourceEventHandler<Pod> {
     @Override
     public void onAdd(Pod pod) {
         try {
-            LOGGER.info("onAdd " + pod.getMetadata().getName());
+            log.info("onAdd " + pod.getMetadata().getName());
             PodContainerStatus ps = getPodStatus(pod);
             if (ps != null) {
                 eventBus.publish(POD_CONTAINER_UPDATED, JsonObject.mapFrom(ps));
             }
         } catch (Exception e) {
-            LOGGER.error(e.getMessage(), e.getCause());
+            log.error(e.getMessage(), e.getCause());
         }
     }
 
     @Override
     public void onUpdate(Pod oldPod, Pod newPod) {
         try {
-            LOGGER.info("onUpdate " + newPod.getMetadata().getName());
+            log.info("onUpdate " + newPod.getMetadata().getName());
             if (!newPod.isMarkedForDeletion() && newPod.getMetadata().getDeletionTimestamp() == null) {
                 PodContainerStatus ps = getPodStatus(newPod);
                 if (ps != null) {
@@ -80,14 +79,14 @@ public class PodEventHandler implements ResourceEventHandler<Pod> {
                 }
             }
         } catch (Exception e) {
-            LOGGER.error(e.getMessage(), e.getCause());
+            log.error(e.getMessage(), e.getCause());
         }
     }
 
     @Override
     public void onDelete(Pod pod, boolean deletedFinalStateUnknown) {
         try {
-            LOGGER.info("onDelete " + pod.getMetadata().getName());
+            log.info("onDelete " + pod.getMetadata().getName());
             String deployment = pod.getMetadata().getLabels().get("app");
             String projectId = deployment != null
                     ? deployment
@@ -100,7 +99,7 @@ public class PodEventHandler implements ResourceEventHandler<Pod> {
 
             eventBus.publish(POD_CONTAINER_DELETED, JsonObject.mapFrom(cs));
         } catch (Exception e) {
-            LOGGER.error(e.getMessage(), e.getCause());
+            log.error(e.getMessage(), e.getCause());
         }
     }
 
@@ -184,7 +183,7 @@ public class PodEventHandler implements ResourceEventHandler<Pod> {
             return status;
         } catch (Exception ex) {
             ex.printStackTrace();
-            LOGGER.error(ex.getMessage(), ex.getCause());
+            log.error(ex.getMessage(), ex.getCause());
             return null;
         }
     }

@@ -1,7 +1,7 @@
 import '@features/project/designer/karavan.css';
 import {CamelUtil} from "@core/api/CamelUtil";
 import {DataFormatDefinition, ExpressionDefinition, ToDefinition,} from "@core/model/CamelDefinition";
-import {CamelElement} from "@core/model/IntegrationDefinition";
+import {CamelElement, Integration} from "@core/model/IntegrationDefinition";
 import {CamelDefinitionApiExt} from "@core/api/CamelDefinitionApiExt";
 import {CamelDefinitionApi} from "@core/api/CamelDefinitionApi";
 import {shallow} from "zustand/shallow";
@@ -167,7 +167,35 @@ export function usePropertiesHook() {
     }
 
     function cloneElement() {
-        // TODO:
+        if (!selectedStep) {
+            return;
+        }
+        // Deep-clone with fresh uuids so the copy is an independent element.
+        const clone = CamelUtil.cloneStep(selectedStep, true);
+        const cloneIntegration = CamelUtil.cloneIntegration(integration);
+        let updated: Integration | undefined;
+        if (tab === 'beans') {
+            updated = CamelDefinitionApiExt.addBeanToIntegration(cloneIntegration, clone as any);
+        } else if (tab === 'rest') {
+            if (clone.dslName === 'RestDefinition') {
+                updated = CamelDefinitionApiExt.addRestToIntegration(cloneIntegration, clone as any);
+            } else {
+                // A REST method (get/post/…): clone it under the same parent RestDefinition.
+                const restUuid = CamelDefinitionApiExt.findRestMethodParent(integration, selectedStep);
+                if (restUuid) {
+                    updated = CamelDefinitionApiExt.addRestMethodToIntegration(cloneIntegration, clone, restUuid);
+                }
+            }
+        } else {
+            // Route step: insert the clone as the next sibling of the original.
+            const meta = CamelDefinitionApiExt.findElementMetaInIntegration(cloneIntegration, selectedStep.uuid);
+            updated = CamelDefinitionApiExt.addStepToIntegration(cloneIntegration, clone, meta.parentUuid ?? '', meta.position + 1);
+        }
+        if (updated) {
+            setIntegration(updated, false);
+            setSelectedStep(clone);
+            setSelectedUuids([clone.uuid]);
+        }
     }
 
     function saveAsRoute(step: CamelElement, stepsOnly: boolean) {

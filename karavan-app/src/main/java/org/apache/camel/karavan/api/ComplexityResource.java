@@ -8,17 +8,16 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.complexity.ComplexityProject;
 import org.apache.camel.karavan.service.ComplexityService;
-import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Path("/ui/complexity")
 public class ComplexityResource {
-
-    private static final Logger LOGGER = Logger.getLogger(ComplexityResource.class.getName());
 
     @Inject
     ComplexityService complexityService;
@@ -30,7 +29,7 @@ public class ComplexityResource {
         try {
             return complexityService.getProjectComplexities();
         } catch (Exception e) {
-            LOGGER.error("Error getting project complexities", e);
+            log.error("Error getting project complexities", e);
             return new ArrayList<>();
         }
     }

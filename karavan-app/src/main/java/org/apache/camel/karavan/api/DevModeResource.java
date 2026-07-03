@@ -22,34 +22,29 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.PodContainerStatus;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.service.ProjectService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.util.Map;
 
 import static org.apache.camel.karavan.KaravanEvents.CMD_DELETE_INTEGRATION;
 import static org.apache.camel.karavan.KaravanEvents.CMD_RELOAD_PROJECT_CODE;
 
+@Slf4j
 @Path("/ui/devmode")
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DevModeResource {
 
-    private static final Logger LOGGER = Logger.getLogger(DevModeResource.class.getName());
+    private final KaravanConfig config;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final KaravanCache karavanCache;
 
-    @Inject
-    KaravanCache karavanCache;
+    private final ProjectService projectService;
 
-    @Inject
-    ProjectService projectService;
-
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -65,19 +60,10 @@ public class DevModeResource {
                 return Response.notModified().build();
             }
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
             e.printStackTrace();
             return Response.serverError().entity(e.getMessage()).build();
         }
-    }
-
-    @GET
-    @Authenticated
-    @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Path("/run/{projectId}")
-    public Response runProjectInDeveloperMode(@PathParam("projectId") String projectId) throws Exception {
-        return runProjectInDeveloperMode(projectId, false, false);
     }
 
     @GET
@@ -97,18 +83,5 @@ public class DevModeResource {
     public Response deleteDevMode(@PathParam("projectId") String projectId, @PathParam("deletePVC") boolean deletePVC) {
         eventBus.publish(CMD_DELETE_INTEGRATION, projectId);
         return Response.accepted().build();
-    }
-
-    @GET
-    @Path("/container/{projectId}")
-    @Authenticated
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getPodStatus(@PathParam("projectId") String projectId) throws RuntimeException {
-        PodContainerStatus cs = karavanCache.getDevModePodContainerStatus(projectId, environment);
-        if (cs != null) {
-            return Response.ok(cs).build();
-        } else {
-            return Response.noContent().build();
-        }
     }
 }

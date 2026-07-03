@@ -57,11 +57,6 @@ spec:
             secretKeyRef:
               key: karavan.keycloak.realm
               name: {{ .Values.secret.existingSecret | default .Release.Name }}
-        - name: KARAVAN_KEYCLOAK_FRONTEND_CLIENTID
-          valueFrom:
-            secretKeyRef:
-              key: karavan.keycloak.frontend.clientId
-              name: {{ .Values.secret.existingSecret | default .Release.Name }}
         - name: KARAVAN_KEYCLOAK_BACKEND_CLIENTID
           valueFrom:
             secretKeyRef:

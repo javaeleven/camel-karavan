@@ -24,7 +24,9 @@ describe('getElementProperties', () => {
     it('getElementProperties 1', () => {
 
         const p: PropertyMeta[] = CamelDefinitionApiExt.getElementProperties("FromDefinition");
-        expect(p.length).to.equal(5);
+        // Camel 4.18.2 FromDefinition has 6 editable properties:
+        // uri, id, note, description, variableReceive, parameters.
+        expect(p.length).to.equal(6);
 
     });
 

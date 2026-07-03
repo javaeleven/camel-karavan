@@ -21,7 +21,7 @@ export function KaravanContainerButton(props: Props) {
     const navigate = useNavigate();
 
     const container = props.container;
-    const health = healths.filter(c => c.projectId === container.projectId).at(0) || new Health();
+    const health = healths.find(c => c.projectId === container.projectId) || new Health();
     const isRunning = container && container.state === 'running';
     const isUp = health.status === 'UP';
 

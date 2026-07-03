@@ -17,16 +17,20 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Getter
+@Setter
+@NoArgsConstructor
 public class DockerCompose {
     private String version;
     private Map<String, DockerComposeService> services;
     private Map<String, DockerNetworkDefinition> networks;
-
-    public DockerCompose() {
-    }
 
     public DockerCompose(Map<String, DockerComposeService> services) {
         this.services = services;
@@ -36,29 +40,5 @@ public class DockerCompose {
         Map<String, DockerComposeService> map = new HashMap<>();
         map.put(service.getContainer_name(), service);
         return new DockerCompose(map);
-    }
-
-    public Map<String, DockerComposeService> getServices() {
-        return services;
-    }
-
-    public void setServices(Map<String, DockerComposeService> services) {
-        this.services = services;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public Map<String, DockerNetworkDefinition> getNetworks() {
-        return networks;
-    }
-
-    public void setNetworks(Map<String, DockerNetworkDefinition> networks) {
-        this.networks = networks;
     }
 }

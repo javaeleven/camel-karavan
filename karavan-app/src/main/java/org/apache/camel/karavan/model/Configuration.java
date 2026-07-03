@@ -16,9 +16,16 @@
  */
 package org.apache.camel.karavan.model;
 
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.List;
 import java.util.Map;
 
+@Getter
+@Setter
+@NoArgsConstructor
 public class Configuration {
     private String title;
     private String version;
@@ -34,9 +41,6 @@ public class Configuration {
     // Default Camel runtime offered when creating a project (camel-main/quarkus/spring-boot).
     private String defaultRuntime;
 
-    public Configuration() {
-    }
-
     public Configuration(String title, String version, String infrastructure, boolean swarmMode, String environment, String platformSecretName, String platformConfigName, List<String> environments, List<String> configFilenames, Map<String, String> advanced) {
         this.title = title;
         this.version = version;
@@ -48,101 +52,5 @@ public class Configuration {
         this.environments = environments;
         this.configFilenames = configFilenames;
         this.advanced = advanced;
-    }
-
-    public boolean isSwarmMode() {
-        return swarmMode;
-    }
-
-    public void setSwarmMode(boolean swarmMode) {
-        this.swarmMode = swarmMode;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public String getInfrastructure() {
-        return infrastructure;
-    }
-
-    public void setInfrastructure(String infrastructure) {
-        this.infrastructure = infrastructure;
-    }
-
-    public String getEnvironment() {
-        return environment;
-    }
-
-    public void setEnvironment(String environment) {
-        this.environment = environment;
-    }
-
-    public List<String> getEnvironments() {
-        return environments;
-    }
-
-    public void setEnvironments(List<String> environments) {
-        this.environments = environments;
-    }
-
-    public List<Object> getStatus() {
-        return status;
-    }
-
-    public void setStatus(List<Object> status) {
-        this.status = status;
-    }
-
-    public List<String> getConfigFilenames() {
-        return configFilenames;
-    }
-
-    public void setConfigFilenames(List<String> configFilenames) {
-        this.configFilenames = configFilenames;
-    }
-
-    public Map<String, String> getAdvanced() {
-        return advanced;
-    }
-
-    public void setAdvanced(Map<String, String> advanced) {
-        this.advanced = advanced;
-    }
-
-    public String getPlatformSecretName() {
-        return platformSecretName;
-    }
-
-    public void setPlatformSecretName(String platformSecretName) {
-        this.platformSecretName = platformSecretName;
-    }
-
-    public String getPlatformConfigName() {
-        return platformConfigName;
-    }
-
-    public void setPlatformConfigName(String platformConfigName) {
-        this.platformConfigName = platformConfigName;
-    }
-
-    public String getDefaultRuntime() {
-        return defaultRuntime;
-    }
-
-    public void setDefaultRuntime(String defaultRuntime) {
-        this.defaultRuntime = defaultRuntime;
     }
 }

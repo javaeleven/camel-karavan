@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import React from 'react';
 import {useAppConfigStore} from "@stores/ProjectStore";
 import {ContainerButtons} from "./ContainerButtons";
 import {DeploymentButtons} from "./DeploymentButtons";

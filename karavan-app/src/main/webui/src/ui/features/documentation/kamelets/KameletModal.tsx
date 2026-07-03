@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
 import {Badge, Button, CardHeader, CardTitle, Content, Flex, Modal, ModalBody, ModalFooter, ModalHeader} from '@patternfly/react-core';
 import {Property} from "@core/model/KameletModels";
 import {Table, Tbody, Td, Th, Thead, Tr} from "@patternfly/react-table";

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Button, TextInputGroup, TextInputGroupMain, TextInputGroupUtilities,} from '@patternfly/react-core';
 import {SearchIcon} from '@patternfly/react-icons';
 import {useAppConfigStore, useProjectStore} from "@stores/ProjectStore";

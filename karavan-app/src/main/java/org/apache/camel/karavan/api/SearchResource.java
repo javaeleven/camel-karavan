@@ -9,8 +9,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.ProjectFile;
-import org.apache.camel.karavan.cache.ProjectFolder;
+import org.apache.camel.karavan.model.ProjectFile;
+import org.apache.camel.karavan.model.ProjectFolder;
 import org.apache.camel.karavan.model.SearchResult;
 
 import java.net.URLDecoder;
@@ -36,7 +36,7 @@ public class SearchResource {
             String search = URLDecoder.decode(encoded, StandardCharsets.UTF_8);
             for (ProjectFolder p : karavanCache.getFolders()) {
                 for (ProjectFile f : karavanCache.getProjectFiles(p.getProjectId())) {
-                    if (f.getCode() != null && f.getCode().toLowerCase().contains(search.toLowerCase())){
+                    if (f.getCode() != null && f.getCode().toLowerCase().contains(search.toLowerCase())) {
                         var list = result.getOrDefault(p.getProjectId(), new ArrayList<>());
                         list.add(f.getName());
                         result.put(p.getProjectId(), list);

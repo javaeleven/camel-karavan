@@ -17,47 +17,23 @@
 
 package org.apache.camel.karavan.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class DockerConfigDefinition {
 
     private String source;
     private String target;
     private String mode;
 
-    public DockerConfigDefinition() {
-    }
-
-    public DockerConfigDefinition(String source, String target, String mode) {
-        this.source = source;
-        this.target = target;
-        this.mode = mode;
-    }
-
     public DockerConfigDefinition(String source, String target) {
         this.source = source;
-        this.target = target;
-    }
-
-    public String getMode() {
-        return mode;
-    }
-
-    public void setMode(String mode) {
-        this.mode = mode;
-    }
-
-    public String getSource() {
-        return source;
-    }
-
-    public void setSource(String source) {
-        this.source = source;
-    }
-
-    public String getTarget() {
-        return target;
-    }
-
-    public void setTarget(String target) {
         this.target = target;
     }
 }

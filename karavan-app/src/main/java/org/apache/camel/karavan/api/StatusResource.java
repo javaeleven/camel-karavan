@@ -22,11 +22,9 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.cache.CamelStatus;
-import org.apache.camel.karavan.cache.CamelStatusValue;
-import org.apache.camel.karavan.cache.DeploymentStatus;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.jboss.logging.Logger;
+import org.apache.camel.karavan.model.CamelStatus;
+import org.apache.camel.karavan.model.CamelStatusValue;
 
 import java.util.List;
 
@@ -35,25 +33,11 @@ import static org.apache.camel.karavan.KaravanEvents.CMD_CLEAR_ALL_STATUSES;
 @Path("/ui/status")
 public class StatusResource {
 
-    private static final Logger LOGGER = Logger.getLogger(StatusResource.class.getName());
-
     @Inject
     KaravanCache karavanCache;
 
     @Inject
     EventBus eventBus;
-
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    @Authenticated
-    @Path("/deployment/{name}/{env}")
-    public Response getDeploymentStatus(@PathParam("name") String name, @PathParam("env") String env) {
-        DeploymentStatus status = karavanCache.getDeploymentStatus(name, env);
-        if (status != null) {
-            return Response.ok(status).build();
-        }
-        return Response.noContent().build();
-    }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -69,32 +53,6 @@ public class StatusResource {
     @Authenticated
     public List<CamelStatus> getCamelContextStatusesByName(@PathParam("statusName") String statusName) {
         return karavanCache.getCamelStatusesByName(CamelStatusValue.Name.valueOf(statusName));
-    }
-
-    @DELETE
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/deployment")
-    public Response deleteDeploymentStatuses() {
-        karavanCache.deleteAllDeploymentsStatuses();
-        return Response.ok().build();
-    }
-
-    @DELETE
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/container")
-    @Authenticated
-    public Response deleteContainerStatuses() {
-        karavanCache.deleteAllPodContainersStatuses();
-        return Response.ok().build();
-    }
-
-    @DELETE
-    @Produces(MediaType.APPLICATION_JSON)
-    @Path("/camel")
-    @Authenticated
-    public Response deleteCamelStatuses() {
-        karavanCache.deleteAllCamelStatuses();
-        return Response.ok().build();
     }
 
     @DELETE

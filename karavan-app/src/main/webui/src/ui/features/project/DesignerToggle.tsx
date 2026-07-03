@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import React from 'react';
 import {ToggleGroup, ToggleGroupItem,} from '@patternfly/react-core';
 import {useFileStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";

@@ -22,22 +22,21 @@ import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.service.ConfigService;
-import org.jboss.logging.Logger;
 
 import static org.apache.camel.karavan.KaravanEvents.*;
 
+@Slf4j
 @Default
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ConfigListener {
 
-    private static final Logger LOGGER = Logger.getLogger(ConfigListener.class.getName());
+    private final ConfigService configService;
 
-    @Inject
-    ConfigService configService;
-
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @ConsumeEvent(value = NOTIFICATION_PROJECTS_STARTED, blocking = true)
     public void shareOnStartup(String data) throws Exception {
@@ -48,13 +47,13 @@ public class ConfigListener {
     public void shareConfig(JsonObject event) throws Exception {
         String filename = event.getString("filename");
         String userId = event.getString("userId");
-        LOGGER.info("Config share event: for " + (filename != null ? filename : "all"));
+        log.info("Config share event: for " + (filename != null ? filename : "all"));
         try {
             configService.share(filename);
             eventBus.publish(NOTIFICATION_CONFIG_SHARED, JsonObject.of("userId", userId, "className", "filename", "filename", filename));
         } catch (Exception e) {
             var error = e.getCause() != null ? e.getCause() : e;
-            LOGGER.error("Failed to share configuration", error);
+            log.error("Failed to share configuration", error);
             if (userId != null) {
                 eventBus.publish(NOTIFICATION_ERROR, JsonObject.of(
                         "userId", userId,

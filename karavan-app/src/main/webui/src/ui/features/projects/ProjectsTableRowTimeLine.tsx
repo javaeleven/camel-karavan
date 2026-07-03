@@ -1,4 +1,3 @@
-import React from 'react';
 import {Label, ProgressStep, ProgressStepper} from '@patternfly/react-core';
 import '@features/projects/Complexity.css';
 import {Project, ProjectCommited} from "@models/ProjectModels";

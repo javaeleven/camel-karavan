@@ -25,9 +25,10 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.cache.ContainerType;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.model.ContainerType;
 import org.apache.camel.karavan.service.RegistryService;
-import org.jboss.logging.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -37,28 +38,24 @@ import static org.apache.camel.karavan.KaravanConstants.*;
 import static org.apache.camel.karavan.KaravanEvents.CMD_COPY_CODE_TO_CONTAINER_IN_SWARM;
 import static org.apache.camel.karavan.KaravanEvents.CMD_PULL_IMAGES;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DockerEventHandler implements ResultCallback<Event> {
 
-    @Inject
-    DockerService dockerService;
+    private final DockerService dockerService;
 
-    @Inject
-    RegistryService registryService;
-
-    private static final Logger LOGGER = Logger.getLogger(DockerEventHandler.class.getName());
+    private final RegistryService registryService;
+    private final EventBus eventBus;
 
     @Override
     public void onStart(Closeable closeable) {
-        LOGGER.info("DockerEventListener started");
+        log.info("DockerEventListener started");
     }
-
-    @Inject
-    EventBus eventBus;
 
     @Override
     public void onNext(Event event) {
-        LOGGER.debug("DockerEventListener onNext " + event.getAction());
+        log.debug("DockerEventListener onNext " + event.getAction());
         try {
             var actorId = event.getActor().getId();
             if (Objects.equals(event.getType(), EventType.CONTAINER)) {
@@ -68,7 +65,7 @@ public class DockerEventHandler implements ResultCallback<Event> {
                 }
             }
         } catch (Exception exception) {
-            LOGGER.error(exception.getMessage());
+            log.error(exception.getMessage());
         }
     }
 
@@ -81,8 +78,8 @@ public class DockerEventHandler implements ResultCallback<Event> {
         } else if ("running".equalsIgnoreCase(container.getState())
                 && (
                 Objects.equals(container.getLabels().get(LABEL_TYPE), ContainerType.devmode.name())
-                || Objects.equals(container.getLabels().get(LABEL_TYPE), ContainerType.build.name())
-                )
+                        || Objects.equals(container.getLabels().get(LABEL_TYPE), ContainerType.build.name())
+        )
                 && event.getStatus() != null
                 && !event.getStatus().startsWith("exec_")
                 && !event.getStatus().startsWith("stop")
@@ -107,16 +104,16 @@ public class DockerEventHandler implements ResultCallback<Event> {
 
     @Override
     public void onError(Throwable throwable) {
-        LOGGER.error(throwable.getMessage());
+        log.error(throwable.getMessage());
     }
 
     @Override
     public void onComplete() {
-        LOGGER.error("DockerEventListener complete");
+        log.error("DockerEventListener complete");
     }
 
     @Override
     public void close() throws IOException {
-        LOGGER.info("DockerEventListener close");
+        log.info("DockerEventListener close");
     }
 }

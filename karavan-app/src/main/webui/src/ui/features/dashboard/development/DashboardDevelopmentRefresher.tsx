@@ -1,4 +1,3 @@
-import * as React from 'react';
 import {useEffect, useState} from 'react';
 import {useProjectsStore, useStatusesStore} from "@stores/ProjectStore";
 import {OperationStatistic} from "@models/CatalogModels";
@@ -149,7 +148,7 @@ export function DashboardDevelopmentRefresher() {
             var componentInfo = projectInfos
                 .map(i => i.routes.find(r => areNodeIdsEqual(nodePrefixId, r.nodePrefixId)))
                 .filter(i => i !== undefined)
-                .map(r => [...r.consumers, ...r.producers].filter(c => c.id === id)?.[0])
+                .map(r => [...r.consumers, ...r.producers].find(c => c.id === id))
                 .find(c => c !== undefined);
             var protocol = componentInfo?.name;
             var address = componentInfo?.parameters?.destinationName ?? componentInfo?.parameters?.topic ?? componentInfo?.parameters?.name;

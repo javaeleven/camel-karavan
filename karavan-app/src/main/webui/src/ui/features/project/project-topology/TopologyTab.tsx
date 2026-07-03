@@ -59,7 +59,7 @@ export function TopologyTab(props: Props) {
         ?.filter(f => f?.name?.endsWith('.camel.yaml'))
         // .filter(f => search === '' || filedFound.includes(f.name))
         .map(f => new IntegrationFile(f.name, f.code));
-    const openApiFile = files?.filter(f => f?.name === OPENAPI_FILE_NAME_JSON)?.at(0);
+    const openApiFile = files?.find(f => f?.name === OPENAPI_FILE_NAME_JSON);
     const openApiJson = openApiFile?.code;
 
     const jsonSchemas = files?.map(f => f.name)?.filter(name => name?.endsWith(JSON_EXTENSION))?.map(name => name);

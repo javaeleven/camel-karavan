@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Button,} from '@patternfly/react-core';
 
 import '@features/project/designer/karavan.css';

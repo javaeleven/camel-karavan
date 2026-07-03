@@ -474,9 +474,9 @@ export class TopologyUtils {
     static getNodeIdByUriAndName(tins: TopologyIncomingNode[], uri: string, name: string): string | undefined {
         if (uri && name) {
             const node = tins
-                .filter(r => r.from.uri === uri
+                .find(r => r.from.uri === uri
                     && (r?.from?.parameters?.name === name || r?.from?.parameters?.address === name),
-                ).at(0);
+                );
             if (node) {
                 return node.id;
             }
@@ -500,9 +500,9 @@ export class TopologyUtils {
     static getRouteIdByUriAndName(tins: TopologyIncomingNode[], uri: string, name: string): string | undefined {
         if (uri && name) {
             const node = tins
-                .filter(r => r.from.uri === uri
+                .find(r => r.from.uri === uri
                     && (r?.from?.parameters?.name === name || r?.from?.parameters?.address === name),
-                ).at(0);
+                );
             if (node) {
                 return 'route-' + node.routeId;
             }

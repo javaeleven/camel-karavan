@@ -3,11 +3,12 @@ package org.apache.camel.karavan.service;
 import io.vertx.core.Vertx;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.ProjectFileCommitDiff;
-import org.apache.camel.karavan.cache.ProjectFolder;
-import org.apache.camel.karavan.cache.ProjectFolderCommit;
-import org.apache.camel.karavan.cache.UserGitConfig;
+import org.apache.camel.karavan.model.ProjectFileCommitDiff;
+import org.apache.camel.karavan.model.ProjectFolder;
+import org.apache.camel.karavan.model.ProjectFolderCommit;
+import org.apache.camel.karavan.model.UserGitConfig;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.diff.DiffEntry;
 import org.eclipse.jgit.diff.DiffFormatter;
@@ -24,18 +25,17 @@ import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.eclipse.microprofile.context.ManagedExecutor;
-import org.jboss.logging.Logger;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.stream.StreamSupport;
 
+@Slf4j
 @Singleton
 public class GitHistoryService {
-
-    private static final Logger LOGGER = Logger.getLogger(GitHistoryService.class.getName());
 
     @Inject
     ManagedExecutor managedExecutor;
@@ -51,7 +51,7 @@ public class GitHistoryService {
 
     public void importProjectCommits(ProjectFolder projectFolder, UserGitConfig user) {
         String projectId = projectFolder.getProjectId();
-        LOGGER.info("Import commits for " + projectId);
+        log.info("Import commits for " + projectId);
         managedExecutor.runAsync(() -> {
             var commits = getProjectCommits(projectFolder, user, 10);
             karavanCache.saveProjectLastCommits(projectId, commits);
@@ -90,12 +90,12 @@ public class GitHistoryService {
 
                             result.add(projectCommit);
                         } catch (Exception e) {
-                            LOGGER.error("Error building diffs for commit " + commit.getId().getName(), e);
+                            log.error("Error building diffs for commit " + commit.getId().getName(), e);
                         }
                     });
 
         } catch (Exception e) {
-            LOGGER.error("Error", e);
+            log.error("Error", e);
         }
 
         return result;
@@ -133,7 +133,7 @@ public class GitHistoryService {
                 String patchText = formatUnifiedDiff(repo, entry);
 
                 String before = readBlobAsText(repo, entry.getOldId().toObjectId());
-                String after  = readBlobAsText(repo, entry.getNewId().toObjectId());
+                String after = readBlobAsText(repo, entry.getNewId().toObjectId());
 
                 // For added/deleted files, one side will be /dev/null and ObjectId may be zero
                 if (isZeroId(entry.getOldId().toObjectId())) before = null;

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, {JSX, useEffect, useState} from 'react';
+import {JSX, useEffect, useState} from 'react';
 import './ProjectPage.css';
 import {shallow} from "zustand/shallow";
 import {useNavigate, useParams} from "react-router-dom";
@@ -58,25 +58,35 @@ export function ProjectPage(props: ProjectPageProps): JSX.Element {
     useEffect(() => {
         setUrlFileName(fileName)
         window.history.replaceState({}, "", `${ROUTES.PROJECTS}/${projectId}`);
-        const p = projects.filter(project => project.projectId === projectId).at(0);
-        if (p) {
-            setProject(p, "select");
-            if (!BUILD_IN_PROJECTS.includes(p.projectId)) {
-                setTabIndex('architecture');
-            }
-        } else {
-            navigate('/');
-        }
         return () => {
             setProject(new Project(), "none");
             setTabIndex('architecture');
         }
     }, []);
 
+    // Resolve the project from the URL id. On a page reload the projects store is
+    // still empty (data loads after auth), so WAIT for it — otherwise we'd bounce to
+    // the projects list on every reload. Only (re)select when the id actually changes
+    // so the 3s data refresh doesn't reset the open tab.
+    useEffect(() => {
+        if (projects.length === 0) return;
+        const p = projects.find(project => project.projectId === projectId);
+        if (!p) {
+            navigate(ROUTES.PROJECTS);
+            return;
+        }
+        if (useProjectStore.getState().project?.projectId !== projectId) {
+            setProject(p, "select");
+            if (!BUILD_IN_PROJECTS.includes(p.projectId)) {
+                setTabIndex('architecture');
+            }
+        }
+    }, [projects, projectId]);
+
     useEffect(() => {
         if (urlFileName !== undefined) {
             const file = files
-                .filter(f => f.projectId === projectId && f.name === urlFileName)?.at(0);
+                .find(f => f.projectId === projectId && f.name === urlFileName);
             if (file) {
                 setFile('select', file);
                 setTabIndex('architecture');

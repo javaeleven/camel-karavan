@@ -8,7 +8,7 @@ nameOverride: "karavan"
 
 image:
   # Default is the official image. For Auth0 OIDC you must use an image whose
-  # SPA is built with the Auth0-aligned SsoApi (see deploy/README.md).
+  # SPA is built from this repo (the SPA selects session/oidc auth at runtime via /ui/auth/type) (see deploy/README.md).
   repository: ghcr.io/apache/camel-karavan
   tag: "4.18.2"
   pullPolicy: IfNotPresent
@@ -39,7 +39,10 @@ ingress:
 # kamelets/templates/configuration/documentation projects on first start.
 environment: "dev"
 
-# Authentication mode: "session" (built-in username/password) or "oidc" (Auth0).
+# Authentication mode. Human login is SSO-only (OIDC BFF): set type: "oidc" and
+# fill the oidc block (see values-auth0.yaml). "session" leaves OIDC unconfigured —
+# the app still runs (builds/machine callers use internal session cookies) but no
+# human can sign in, so it is only useful for API-only/dev probing.
 auth:
   type: "session"
 
@@ -76,7 +79,10 @@ intervals:
   camelStatus: "3s"
 
 # Image used by the app to run integrations in dev-mode.
-devmodeImage: "ghcr.io/apache/camel-karavan-devmode:4.18.2"
+# BUILT IN-APP at startup (Jib Core) and pushed here — must live in the same
+# registry the app can push to (registry.* below / ECR on EKS), NOT ghcr.
+# See docs/DEVMODE_IMAGE_JIB.md.
+devmodeImage: "registry:5000/karavan/karavan-devmode:4.18.2"
 
 # Container registry the app builds/pushes project images to and the cluster
 # pulls them from. The chart renders a Secret named "karavan" that BOTH the app

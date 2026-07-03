@@ -1,0 +1,74 @@
+plugins {
+    id 'java'
+    id 'io.quarkus'
+}
+
+group = 'org.apache.camel.karavan'
+version = providers.gradleProperty('karavanVersion').get()
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(providers.gradleProperty('javaVersion').get() as int)
+    }
+}
+
+def v = { String key -> providers.gradleProperty(key).get() }
+
+dependencies {
+    implementation enforcedPlatform("${v('quarkusPlatformGroupId')}:${v('quarkusPlatformArtifactId')}:${v('quarkusPlatformVersion')}")
+
+    implementation 'io.quarkus:quarkus-cache'
+    implementation 'io.quarkus:quarkus-messaging'
+    implementation 'io.quarkus:quarkus-scheduler'
+    implementation 'io.quarkus:quarkus-rest-jackson'
+    implementation 'io.smallrye.reactive:smallrye-mutiny-vertx-web-client'
+    implementation 'io.quarkus:quarkus-smallrye-fault-tolerance'
+    implementation 'io.quarkus:quarkus-security'
+    implementation 'io.quarkus:quarkus-elytron-security-common'
+    implementation "io.quarkiverse.jgit:quarkus-jgit:${v('jgitVersion')}"
+    implementation 'io.quarkus:quarkus-kubernetes-client'
+    implementation 'org.apache.commons:commons-compress'
+    implementation 'io.quarkus:quarkus-minikube'
+    implementation 'io.quarkus:quarkus-oidc'
+    implementation 'io.quarkus:quarkus-smallrye-health'
+    implementation 'io.quarkus:quarkus-hibernate-validator'
+    implementation 'org.apache.commons:commons-text'
+
+    // Lombok — boilerplate reduction for data/model classes
+    compileOnly "org.projectlombok:lombok:${v('lombokVersion')}"
+    annotationProcessor "org.projectlombok:lombok:${v('lombokVersion')}"
+
+    // Docker
+    implementation "com.github.docker-java:docker-java-core:${v('dockerJavaVersion')}"
+    implementation "com.github.docker-java:docker-java-transport-httpclient5:${v('dockerJavaVersion')}"
+
+    implementation 'io.quarkus:quarkus-container-image-jib'
+    // Jib Core SDK: the app derives + pushes the devmode image itself (no Docker daemon).
+    implementation "com.google.cloud.tools:jib-core:${v('jibCoreVersion')}"
+    implementation "io.quarkiverse.quinoa:quarkus-quinoa:${v('quinoaVersion')}"
+
+    // Hibernate ORM + Postgres JDBC + Flyway
+    implementation 'io.quarkus:quarkus-hibernate-orm-panache'
+    implementation 'io.quarkus:quarkus-jdbc-postgresql'
+    implementation 'io.quarkus:quarkus-flyway'
+
+    testImplementation 'io.quarkus:quarkus-junit5'
+    testImplementation 'io.rest-assured:rest-assured'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add('-parameters')      // mirrors maven.compiler.parameters=true
+    options.compilerArgs.add('-Xlint:deprecation')
+    options.encoding = 'UTF-8'
+}
+
+// Parity with `mvn package`: a plain `gradle build` produces the runnable Quarkus artifact.
+tasks.named('assemble').configure { dependsOn(tasks.named('quarkusBuild')) }
+
+test {
+    systemProperty 'java.util.logging.manager', 'org.jboss.logmanager.LogManager'
+}

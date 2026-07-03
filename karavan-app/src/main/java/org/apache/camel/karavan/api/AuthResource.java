@@ -1,31 +1,30 @@
 package org.apache.camel.karavan.api;
 
 import io.quarkus.security.Authenticated;
-import io.vertx.core.json.JsonObject;
 import jakarta.annotation.security.PermitAll;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.*;
-import org.apache.camel.karavan.cache.AccessUser;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.service.AuthService;
-import org.eclipse.microprofile.config.ConfigProvider;
-import org.jboss.logging.Logger;
-
-import java.util.Map;
-
-import static org.apache.camel.karavan.service.AuthService.SESSION_MAX_AGE;
+import org.apache.camel.karavan.model.AccessUser;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Path("/ui/auth")
 @Produces(MediaType.APPLICATION_JSON)
 public class AuthResource extends AbstractApiResource {
 
-    private static final Logger LOGGER = Logger.getLogger(AuthResource.class.getName());
     private static final String SESSION_ID = "taskId";
     private static final String CSRF = "csrf";
 
-    @Inject
-    AuthService authService;
+    // platform.* cannot be a @ConfigMapping: the prefix collides with Quarkus's own
+    // platform properties (platform.quarkus.*), which fails startup validation.
+    @ConfigProperty(name = "platform.auth", defaultValue = "oidc")
+    String platformAuth;
 
     @Inject
     KaravanCache karavanCache;
@@ -35,62 +34,10 @@ public class AuthResource extends AbstractApiResource {
     @Produces(MediaType.TEXT_PLAIN)
     @PermitAll
     public Response authType() throws Exception {
-        String authType = ConfigProvider.getConfig().getValue("platform.auth", String.class);
+        String authType = platformAuth;
         return Response.ok(authType).build();
     }
 
-    @POST
-    @Path("/login")
-    @PermitAll
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response login(JsonObject body) throws Exception {
-        try {
-            final AccessUser user = authService.login(body.getString("username"), body.getString("password"));
-            var session = authService.createAndSaveSession(user.username, true);
-            NewCookie sidCookie = new NewCookie.Builder(SESSION_ID).value(session.sessionId).path("/").maxAge(SESSION_MAX_AGE).secure(true).httpOnly(true).build();
-            NewCookie csrfCookie = new NewCookie.Builder(CSRF).value(session.csrfToken).path("/").maxAge(SESSION_MAX_AGE).secure(false).httpOnly(true).build();
-            return Response.ok(JsonObject.of("username", user.getUsername(), "roles", user.getRoles()))
-                    .cookie(sidCookie).cookie(csrfCookie).build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.FORBIDDEN).entity(e.getMessage()).build();
-        }
-    }
-
-    @POST
-    @Path("/password")
-    @Authenticated
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response setPassword(JsonObject body) throws Exception {
-        try {
-            final var username = getIdentity().getString("username");
-            final var currentPassword = body.getString("currentPassword");
-            final var password = body.getString("password");
-            final AccessUser user = authService.login(username, currentPassword);
-            authService.changePassword(username, password, false);
-            NewCookie sidCookie = new NewCookie.Builder(SESSION_ID).path("/").maxAge(0).secure(true).httpOnly(true).sameSite(NewCookie.SameSite.LAX).build();
-            NewCookie csrfCookie = new NewCookie.Builder(CSRF).path("/").maxAge(60).secure(false).sameSite(NewCookie.SameSite.LAX).build();
-            return Response.noContent().cookie(sidCookie).cookie(csrfCookie).build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.FORBIDDEN).entity(e.getMessage()).build();
-        }
-    }
-
-
-    @POST
-    @PermitAll
-    @Path("/logout")
-    public Response logout(@CookieParam(SESSION_ID) String sessionId) throws Exception {
-        NewCookie sidCookie = new NewCookie.Builder(SESSION_ID).path("/").maxAge(0).secure(true).httpOnly(true).sameSite(NewCookie.SameSite.LAX).build();
-        NewCookie csrfCookie = new NewCookie.Builder(CSRF).path("/").maxAge(60).secure(false).sameSite(NewCookie.SameSite.LAX).build();
-        try {
-            if (sessionId != null) {
-                karavanCache.deleteAccessSession(sessionId);
-            }
-            return Response.noContent().cookie(sidCookie).cookie(csrfCookie).build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).cookie(sidCookie).cookie(csrfCookie).build();
-        }
-    }
 
     @GET
     @Path("/me")
@@ -102,9 +49,35 @@ public class AuthResource extends AbstractApiResource {
         // In OIDC (BFF) mode the principal comes from the IdP token and is not in
         // the local user cache; build the response from the SecurityIdentity
         // (username + roles + email) so the SPA still gets a populated user.
+        var identity = getIdentity();
         if (user == null) {
-            return Response.ok(getIdentity()).build();
+            // First SSO login of this principal: provision it into the local user
+            // cache so the Access page reflects actual IdP users.
+            var provisioned = new AccessUser();
+            provisioned.setUsername(username);
+            provisioned.setEmail(identity.getString("email"));
+            provisioned.setFirstName(identity.getString("firstName"));
+            provisioned.setLastName(identity.getString("lastName"));
+            provisioned.setRoles(identity.getJsonArray("roles").stream().map(Object::toString).toList());
+            provisioned.setStatus(AccessUser.UserStatus.ACTIVE);
+            karavanCache.saveUser(provisioned, true);
+            return Response.ok(provisioned).build();
+        }
+        // Backfill names for users provisioned before name claims were wired
+        // (or when the IdP profile gains them later).
+        String firstName = identity.getString("firstName");
+        String lastName = identity.getString("lastName");
+        boolean needsBackfill = (isBlank(user.getFirstName()) && !isBlank(firstName))
+                || (isBlank(user.getLastName()) && !isBlank(lastName));
+        if (needsBackfill) {
+            user.setFirstName(isBlank(user.getFirstName()) ? firstName : user.getFirstName());
+            user.setLastName(isBlank(user.getLastName()) ? lastName : user.getLastName());
+            karavanCache.saveUser(user, true);
         }
         return Response.ok(user).build();
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 }

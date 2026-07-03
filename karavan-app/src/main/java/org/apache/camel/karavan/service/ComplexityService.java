@@ -4,11 +4,12 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.ProjectFile;
-import org.apache.camel.karavan.cache.ProjectFolder;
 import org.apache.camel.karavan.complexity.*;
-import org.jboss.logging.Logger;
+import org.apache.camel.karavan.model.ProjectFile;
+import org.apache.camel.karavan.model.ProjectFolder;
 import org.yaml.snakeyaml.Yaml;
 
 import java.util.*;
@@ -16,10 +17,11 @@ import java.util.*;
 import static org.apache.camel.karavan.service.CodeService.APPLICATION_PROPERTIES_FILENAME;
 import static org.apache.camel.karavan.service.CodeService.CAMEL_YAML_EXTENSION;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ComplexityService {
 
-    private static final Logger LOGGER = Logger.getLogger(ComplexityService.class.getName());
     private static final int LIMIT_COMPLEX_ROUTES = 20;
     private static final int LIMIT_NORMAL_ROUTES = 10;
     private static final int LIMIT_COMPLEX_ROUTES_PER_FILE = 2;
@@ -40,14 +42,10 @@ public class ComplexityService {
     private static final int LIMIT_NORMAL_FILES = 10;
     private static final int LIMIT_COMPLEX_FILE_LENGTH = 5000;
     private static final int LIMIT_NORMAL_FILE_LENGTH = 2000;
-
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    CodeService codeService;
-
     private static JsonArray components;
+    private final KaravanCache karavanCache;
+    private final CodeService codeService;
+
     private JsonArray getComponents() {
         if (components == null) {
             var json = codeService.getResourceFile("/metadata/components.json");
@@ -56,15 +54,15 @@ public class ComplexityService {
         return components;
     }
 
-    private Map<String,String> getComponentDefaultParameters(String name) {
-        Map<String,String> result = new HashMap<>();
+    private Map<String, String> getComponentDefaultParameters(String name) {
+        Map<String, String> result = new HashMap<>();
         try {
             var comps = getComponents();
-            var comp = comps.stream().filter(o -> ((JsonObject)o).getJsonObject("component").getString("name").equals(name)).findFirst().orElse(JsonObject.of());
+            var comp = comps.stream().filter(o -> ((JsonObject) o).getJsonObject("component").getString("name").equals(name)).findFirst().orElse(JsonObject.of());
             if (comp instanceof JsonObject) {
                 var properties = ((JsonObject) comp).getJsonObject("properties");
                 if (properties != null) {
-                    for (String key: properties.fieldNames()){
+                    for (String key : properties.fieldNames()) {
                         var prop = properties.getJsonObject(key);
                         if (Objects.equals(prop.getString("kind"), "path") || Objects.equals(prop.getBoolean("required"), true)) {
                             result.put(key, prop.getString("defaultValue"));
@@ -89,7 +87,7 @@ public class ComplexityService {
     }
 
     public ComplexityProject getProjectComplexity(String projectId) {
-        var project =  karavanCache.getProject(projectId);
+        var project = karavanCache.getProject(projectId);
         return getProjectComplexity(project);
     }
 
@@ -145,7 +143,7 @@ public class ComplexityService {
             }
             complexityProject.setRoutes(routes);
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
             e.printStackTrace();
         }
         return calculateComplexity(complexityProject);
@@ -205,7 +203,7 @@ public class ComplexityService {
                 || f.getComplexityComponentsExt().equals(Complexity.complex)
                 || f.getComplexityComponentsInt().equals(Complexity.complex)
                 || f.getComplexityKamelets().equals(Complexity.complex)
-                || f.getComplexityProcessors().equals(Complexity.complex) ) {
+                || f.getComplexityProcessors().equals(Complexity.complex)) {
             f.setComplexity(Complexity.complex);
         } else if (f.getComplexityLines().equals(Complexity.normal)
                 || f.getComplexityRoutes().equals(Complexity.normal)
@@ -214,7 +212,7 @@ public class ComplexityService {
                 || f.getComplexityComponentsExt().equals(Complexity.normal)
                 || f.getComplexityComponentsInt().equals(Complexity.normal)
                 || f.getComplexityKamelets().equals(Complexity.normal)
-                || f.getComplexityProcessors().equals(Complexity.normal) ) {
+                || f.getComplexityProcessors().equals(Complexity.normal)) {
             f.setComplexity(Complexity.normal);
         }
 
@@ -376,7 +374,7 @@ public class ComplexityService {
             var fromUri = from.getString("uri");
             var parameters = getComponentDefaultParameters(fromUri);
             var params = from.containsKey("parameters") ? from.getJsonObject("parameters") : JsonObject.of();
-            for (String key: params.fieldNames()) {
+            for (String key : params.fieldNames()) {
                 parameters.put(key, params.getString(key));
             }
             complexity.addConsumer(new ComplexityComponent(id, fromUri, parameters));
@@ -392,7 +390,7 @@ public class ComplexityService {
                 return getStepsComplexity(complexity, steps);
             }
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
             e.printStackTrace();
         }
         return complexity;
@@ -407,7 +405,7 @@ public class ComplexityService {
             complexity.setTemplated(true);
             complexity.setNodePrefixId(templatedRoute.getString("prefixId"));
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
             e.printStackTrace();
         }
         return complexity;
@@ -433,7 +431,7 @@ public class ComplexityService {
                     var uri = step.getString("uri");
                     var parameters = getComponentDefaultParameters(uri);
                     var params = step.containsKey("parameters") ? step.getJsonObject("parameters") : JsonObject.of();
-                    for (String key: params.fieldNames()) {
+                    for (String key : params.fieldNames()) {
                         parameters.put(key, params.getString(key));
                     }
                     complexity.addConsumer(new ComplexityComponent(id, uri, parameters));
@@ -450,7 +448,7 @@ public class ComplexityService {
                     var uri = step.getString("uri");
                     var parameters = getComponentDefaultParameters(uri);
                     var params = step.containsKey("parameters") ? step.getJsonObject("parameters") : JsonObject.of();
-                    for (String key: params.fieldNames()) {
+                    for (String key : params.fieldNames()) {
                         parameters.put(key, params.getString(key));
                     }
                     complexity.addProducer(new ComplexityComponent(id, uri, parameters));
@@ -474,7 +472,7 @@ public class ComplexityService {
                         for (Object w : when) {
                             var stepsW = ((JsonObject) w).getJsonArray("steps");
                             if (stepsW != null) {
-                                complexity =  getStepsComplexity(complexity, stepsW);
+                                complexity = getStepsComplexity(complexity, stepsW);
                             }
                         }
                     }
@@ -482,13 +480,13 @@ public class ComplexityService {
                     if (otherwise != null) {
                         var otherwiseSteps = otherwise.getJsonArray("steps");
                         if (otherwiseSteps != null) {
-                            complexity =  getStepsComplexity(complexity, otherwiseSteps);
+                            complexity = getStepsComplexity(complexity, otherwiseSteps);
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            LOGGER.error(e);
+            log.error(e.getMessage(), e);
             e.printStackTrace();
         }
         return complexity;

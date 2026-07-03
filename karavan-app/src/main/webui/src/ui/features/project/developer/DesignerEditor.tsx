@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, {useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
 import '@features/project/designer/karavan.css';
 import {useFilesStore, useFileStore, useProjectStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";
@@ -66,11 +66,11 @@ export function DesignerEditor() {
     }
 
     function onGetCustomCode(name: string, javaType: string): Promise<string | undefined> {
-        return new Promise<string | undefined>(resolve => resolve(files.filter(f => f.name === name + ".java")?.at(0)?.code));
+        return new Promise<string | undefined>(resolve => resolve(files.find(f => f.name === name + ".java")?.code));
     }
 
     function onSavePropertyPlaceholder(key: string, value: string) {
-        const file = files.filter(f => f.name === APPLICATION_PROPERTIES)?.at(0);
+        const file = files.find(f => f.name === APPLICATION_PROPERTIES);
         const code = file?.code?.concat('\n').concat(key).concat('=').concat(value);
         if (file && code) {
             file.code = code;
@@ -104,7 +104,7 @@ export function DesignerEditor() {
     }
 
     function switchToFile(fileName: string) {
-        const file = files.filter(f => f.name === fileName).at(0);
+        const file = files.find(f => f.name === fileName);
         if (file) {
             setFile('select', file);
             setKey(Math.random().toString())

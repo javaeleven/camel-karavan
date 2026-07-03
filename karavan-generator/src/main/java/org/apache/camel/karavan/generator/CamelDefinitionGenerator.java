@@ -20,6 +20,8 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.*;
 
+import static java.util.stream.Collectors.toList;
+
 public final class CamelDefinitionGenerator extends AbstractGenerator {
 
     final static String modelHeader = "karavan-generator/src/main/resources/CamelDefinition.header.ts";
@@ -62,7 +64,9 @@ public final class CamelDefinitionGenerator extends AbstractGenerator {
         String stepName = getStepNameForClass(className);
         Map<String, JsonObject> properties = getClassProperties(stepName, obj);
 
-        List<String> required = obj.containsKey("required") ? obj.getJsonArray("required").getList() : List.of();
+        List<String> required = obj.containsKey("required")
+                ? obj.getJsonArray("required").stream().map(String::valueOf).collect(toList())
+                : List.of();
         List<String> attrs = new ArrayList<>();
         if (className.endsWith("Definition")) {
             attrs.add("    stepName?: string = '" + stepName + "'");

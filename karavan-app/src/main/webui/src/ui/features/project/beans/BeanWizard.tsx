@@ -101,7 +101,7 @@ export function BeanWizard() {
     }
 
     function handleFormSubmit() {
-        const file = files.filter(f=> f.name === (filename + KARAVAN_DOT_EXTENSION.CAMEL_YAML)).at(0);
+        const file = files.find(f=> f.name === (filename + KARAVAN_DOT_EXTENSION.CAMEL_YAML));
         if (file && bean !== undefined) {
             const i = CamelDefinitionYaml.yamlToIntegration(file.name, file.code);
             const i2 = CamelDefinitionApiExt.addBeanToIntegration(i, bean);

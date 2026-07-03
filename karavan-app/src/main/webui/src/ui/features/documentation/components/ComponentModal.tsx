@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Badge, Button, CardHeader, Content, Flex, Modal, ModalBody, ModalFooter, ModalHeader, Tab, Tabs, TabTitleText} from '@patternfly/react-core';
 
 import '@features/project/designer/karavan.css';

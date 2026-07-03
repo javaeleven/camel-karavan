@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Button, Modal, ModalBody, ModalFooter, ModalHeader, Spinner, Switch, Tooltip, TooltipPosition} from '@patternfly/react-core';
 import DeleteIcon from "@patternfly/react-icons/dist/esm/icons/trash-icon";
 import StopIcon from "@patternfly/react-icons/dist/esm/icons/stop-icon";
@@ -37,7 +37,7 @@ export function ContainerButtons() {
     const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
     const [actionType, setActionType] = useState<'deploy' | 'run' | 'stop' | 'delete'>('run');
 
-    const containerStatus = containers.filter(c => c.containerName === project.projectId).at(0);
+    const containerStatus = containers.find(c => c.containerName === project.projectId);
     const commands = containerStatus?.commands || ['deploy'];
     const isRunning = containerStatus?.state === 'running';
     const inTransit = containerStatus?.inTransit;

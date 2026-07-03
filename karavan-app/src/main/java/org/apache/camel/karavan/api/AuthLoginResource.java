@@ -30,7 +30,7 @@ import java.net.URI;
  * (application-type=web-app) run the Authorization Code flow — a full-page
  * redirect to the IdP. After the callback + restore-path, the request reaches
  * this method authenticated and we 302 the browser back to the SPA.
- *
+ * <p>
  * The SPA navigates here (e.g. /auth/login?returnTo=/projects) whenever it gets
  * a 401 from a /ui/* call in OIDC mode, instead of trying to do the redirect in
  * JavaScript — which is what caused the /login <-> IdP loop.
@@ -38,11 +38,6 @@ import java.net.URI;
 @Path("/auth/login")
 @Authenticated
 public class AuthLoginResource {
-
-    @GET
-    public Response login(@QueryParam("returnTo") String returnTo) {
-        return Response.seeOther(URI.create(safeReturnTo(returnTo))).build();
-    }
 
     // Only allow same-origin absolute paths to avoid an open redirect.
     static String safeReturnTo(String raw) {
@@ -62,5 +57,10 @@ public class AuthLoginResource {
             if (c < 0x20 || c == 0x7F) return "/";
         }
         return raw;
+    }
+
+    @GET
+    public Response login(@QueryParam("returnTo") String returnTo) {
+        return Response.seeOther(URI.create(safeReturnTo(returnTo))).build();
     }
 }
