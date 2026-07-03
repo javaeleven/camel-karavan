@@ -68,7 +68,7 @@ export const DocumentationPage = () => {
 
     useEffect(() => {
         if (!activeItemIsBuildIn()) {
-            const m = files.filter(f => f.name === activeItem)?.[0]?.code || '';
+            const m = files.find(f => f.name === activeItem)?.code || '';
             setMarkdown(m)
         }
     }, [activeItem]);

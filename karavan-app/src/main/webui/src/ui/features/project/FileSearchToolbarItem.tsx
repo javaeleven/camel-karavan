@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import {useEffect} from 'react';
 import {Button, TextInputGroup, TextInputGroupMain, TextInputGroupUtilities} from '@patternfly/react-core';
 import {shallow} from "zustand/shallow";
 import {useSearchStore} from "@stores/SearchStore";

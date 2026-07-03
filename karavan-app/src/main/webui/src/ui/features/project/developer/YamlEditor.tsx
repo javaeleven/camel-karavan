@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import {useEffect, useRef} from 'react';
 import {defaultEditorOptions} from "@features/project/developer/EditorConfig";
 import {MonacoEditorWrapper} from "@features/project/developer/MonacoEditorWrapper";
 import {Group, Panel} from "react-resizable-panels";

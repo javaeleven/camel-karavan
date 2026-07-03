@@ -46,9 +46,9 @@ make port-forward          # http://localhost:8080
 make open                  # port-forward + open the browser
 ```
 
-Default login (session auth): **`admin`** / **`K@r@v@n418`** (from
-`karavan-app/src/main/resources/application.properties`; override in production via
-`KARAVAN_*` env vars).
+Human login is **SSO-only** (OIDC via the Backend-for-Frontend flow — see the Auth0
+section below). There is no built-in username/password login; deploy with
+`auth.type: "oidc"` and the `oidc` values filled in.
 
 ## Operate
 

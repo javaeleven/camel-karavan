@@ -56,7 +56,8 @@ public class DockerStackConverter {
 
     /**
      * Converts a single service to YAML.
-     * @param service The service object
+     *
+     * @param service     The service object
      * @param serviceName The name (key) for the service (e.g., "my-app")
      * @return A YAML string
      */
@@ -153,7 +154,7 @@ public class DockerStackConverter {
                 if (Tag.NULL.equals(valueNode.getTag())) {
                     return null; // skip 'null' values
                 }
-                if (propertyValue instanceof String && (((String) propertyValue).isEmpty() || ((String) propertyValue).isBlank()) ) {
+                if (propertyValue instanceof String && (((String) propertyValue).isEmpty() || ((String) propertyValue).isBlank())) {
                     return null; // skip '' values
                 }
                 if (valueNode instanceof CollectionNode) {

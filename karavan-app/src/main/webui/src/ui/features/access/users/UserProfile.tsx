@@ -14,7 +14,7 @@ function UserProfile() {
     const [isReset, setReset] = React.useState(false);
     const [backendError, setBackendError] = React.useState<string>();
     const formContext = useForm<AccessUser>({mode: "all"});
-    const {getTextField, getPasswordField} = useFormUtil(formContext);
+    const {getTextField} = useFormUtil(formContext);
     const {
         formState: {errors},
         handleSubmit,

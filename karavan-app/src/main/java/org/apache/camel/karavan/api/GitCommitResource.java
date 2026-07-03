@@ -5,21 +5,19 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.cache.ProjectFolder;
-import org.apache.camel.karavan.cache.ProjectFolderCommit;
-import org.apache.camel.karavan.cache.SystemCommit;
-import org.apache.camel.karavan.cache.UserGitConfig;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.model.ProjectFolder;
+import org.apache.camel.karavan.model.ProjectFolderCommit;
+import org.apache.camel.karavan.model.SystemCommit;
 import org.apache.camel.karavan.service.GitHistoryService;
 import org.apache.camel.karavan.service.GitService;
-import org.jboss.logging.Logger;
 
 import java.util.List;
 import java.util.Objects;
 
+@Slf4j
 @Path("/ui/git")
 public class GitCommitResource extends AbstractApiResource {
-
-    private static final Logger LOGGER = Logger.getLogger(GitCommitResource.class.getName());
 
     @Inject
     GitHistoryService gitHistoryService;
@@ -31,11 +29,11 @@ public class GitCommitResource extends AbstractApiResource {
     @Authenticated
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/commits/{projectId}")
-    public List<ProjectFolderCommit> getProjectCommits(@PathParam("projectId")  String projectId) {
+    public List<ProjectFolderCommit> getProjectCommits(@PathParam("projectId") String projectId) {
         try {
             return karavanCache.getProjectLastCommits(projectId);
         } catch (Exception e) {
-            LOGGER.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
             return List.of();
         }
     }
@@ -56,7 +54,7 @@ public class GitCommitResource extends AbstractApiResource {
             }
             gitHistoryService.importProjectCommits(p, karavanCache.getUserGitConfig(username));
             return Response.accepted().build();
-        }  catch (Exception e) {
+        } catch (Exception e) {
             return Response.serverError().entity(e.getMessage()).build();
         }
     }
@@ -69,7 +67,7 @@ public class GitCommitResource extends AbstractApiResource {
         try {
             return karavanCache.getSystemLastCommits();
         } catch (Exception e) {
-            LOGGER.error(e.getMessage(), e);
+            log.error(e.getMessage(), e);
             return List.of();
         }
     }

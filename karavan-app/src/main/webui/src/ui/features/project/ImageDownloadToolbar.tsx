@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useEffect} from 'react';
+import {useEffect} from 'react';
 import {FlexItem, Toolbar, ToolbarContent,} from '@patternfly/react-core';
 import '@features/project/designer/karavan.css';
 

@@ -1,5 +1,4 @@
 import {DashboardDevelopmentCard} from "@features/dashboard/development/DashboardDevelopmentCard";
-import * as React from "react";
 import {useState} from "react";
 import {useProjectsStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";

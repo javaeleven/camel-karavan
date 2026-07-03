@@ -22,6 +22,9 @@ def v = { String key -> providers.gradleProperty(key).get() }
 dependencies {
     implementation "org.apache.camel:camel-core-model:${v('camelVersion')}"
     implementation "io.vertx:vertx-core:${v('vertxVersion')}"
+    // Provides io.vertx.codegen.annotations.* referenced by vertx-core class files;
+    // without it javac emits "Cannot find annotation method ... GenIgnore" noise.
+    compileOnly "io.vertx:vertx-codegen:${v('vertxVersion')}"
     implementation "com.fasterxml.jackson.core:jackson-databind:${v('jacksonVersion')}"
     implementation "org.apache.camel:camel-catalog:${v('camelVersion')}"
     implementation "org.apache.camel:camel-yaml-dsl:${v('camelVersion')}"
@@ -31,6 +34,12 @@ dependencies {
         exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-yaml'
         exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-jsr310'
     }
+
+    // Same conventions as karavan-app: Lombok @Slf4j for logging (simple binding —
+    // this is a build-time CLI tool, console output is the point).
+    compileOnly "org.projectlombok:lombok:${v('lombokVersion')}"
+    annotationProcessor "org.projectlombok:lombok:${v('lombokVersion')}"
+    implementation "org.slf4j:slf4j-simple:${v('slf4jVersion')}"
 }
 
 application {
@@ -39,7 +48,7 @@ application {
 
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add('-parameters')      // mirrors maven.compiler.parameters=true
-    options.compilerArgs.add('-Xlint:deprecation')
+    options.compilerArgs.add('-Xlint:all')      // zero-warning policy (kept at zero as of this refactor)
     options.encoding = 'UTF-8'
 }
 

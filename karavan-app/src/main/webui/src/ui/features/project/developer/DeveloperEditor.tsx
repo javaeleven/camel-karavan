@@ -1,4 +1,4 @@
-import React, {JSX, useEffect, useState} from 'react';
+import {JSX, useEffect, useState} from 'react';
 import {CodeEditor} from "./CodeEditor";
 import {MarkdownEditor} from "@features/project/developer/MarkdownEditor";
 import './DeveloperManager.css'

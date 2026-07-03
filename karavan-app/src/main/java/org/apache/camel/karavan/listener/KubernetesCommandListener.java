@@ -20,16 +20,17 @@ package org.apache.camel.karavan.listener;
 import io.quarkus.vertx.ConsumeEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.kubernetes.KubernetesStatusService;
 import org.apache.camel.karavan.service.ConfigService;
 
 import static org.apache.camel.karavan.KaravanEvents.CMD_RESTART_INFORMERS;
 
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class KubernetesCommandListener {
 
-    @Inject
-    KubernetesStatusService kubernetesStatusService;
+    private final KubernetesStatusService kubernetesStatusService;
 
     @ConsumeEvent(value = CMD_RESTART_INFORMERS, blocking = true)
     public void restartInformers(String dummy) {

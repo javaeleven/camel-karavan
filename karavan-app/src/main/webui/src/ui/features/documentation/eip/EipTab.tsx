@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
 import {Gallery,} from '@patternfly/react-core';
 import {EipCard} from "./EipCard";
 import {EipModal} from "./EipModal";

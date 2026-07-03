@@ -134,9 +134,9 @@ export function DslElement(props: Props) {
         const {step, prevStep, nextStep, parent, inSteps, inStepsLength} = props;
         const isSelected = isElementSelected();
         if (el) {
-            const header = Array.from(el.childNodes.values()).filter((n: any) => n.classList?.contains("header"))[0];
+            const header = Array.from(el.childNodes.values()).find((n: any) => n.classList?.contains("header"));
             if (header) {
-                const headerIcon: any = Array.from(header.childNodes.values()).filter((n: any) => n.classList?.contains("header-icon"))[0];
+                const headerIcon: any = Array.from(header.childNodes.values()).find((n: any) => n.classList?.contains("header-icon"));
                 const headerRect = headerIcon.getBoundingClientRect();
                 const rect = el.getBoundingClientRect();
                 if (step.showChildren) {

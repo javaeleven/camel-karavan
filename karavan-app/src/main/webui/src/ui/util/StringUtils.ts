@@ -339,3 +339,8 @@ export function findPlaceholders(code: string): string[] {
     }
     return [...new Set(results)];
 }
+/** Human display name: "First Last" when present, otherwise the username/email. */
+export function userDisplayName(user?: { firstName?: string | null, lastName?: string | null, username?: string | null, email?: string | null }): string {
+    const name = [user?.firstName, user?.lastName].filter(n => n && n !== 'null').join(' ').trim();
+    return name.length > 0 ? name : (user?.username ?? user?.email ?? '');
+}

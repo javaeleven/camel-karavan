@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import React from 'react';
 import {Flex, FlexItem, Label, LabelGroup, Tooltip,} from '@patternfly/react-core';
 import '@features/project/designer/karavan.css';
 import UpIcon from "@patternfly/react-icons/dist/esm/icons/running-icon";

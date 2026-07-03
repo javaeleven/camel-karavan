@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Badge, Button, Label} from '@patternfly/react-core';
 import {Tbody, Td, Tr} from '@patternfly/react-table';
 import {useSystemStore} from "@stores/SystemStore";
@@ -28,7 +28,7 @@ export function SecretRow(props: Props) {
 
     function getSecretDataKeys(secretName: string): string[] {
         if (secrets && secrets.length > 0) {
-            return Object.getOwnPropertyNames(secrets.filter(s => s.name === secretName).at(0)?.data)
+            return Object.getOwnPropertyNames(secrets.find(s => s.name === secretName)?.data)
                 .sort((a, b) => a.localeCompare(b));
         } else {
             return [];

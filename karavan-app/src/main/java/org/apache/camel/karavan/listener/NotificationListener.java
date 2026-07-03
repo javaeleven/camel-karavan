@@ -23,7 +23,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.cache.ProjectFolder;
+import org.apache.camel.karavan.model.ProjectFolder;
 
 import java.util.UUID;
 

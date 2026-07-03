@@ -13,7 +13,8 @@ public class SessionCleanupService {
     @Inject
     KaravanCache karavanCache;
 
-    @Scheduled(every = "10m") // Run every 10 minutes
+    @Scheduled(every = "10m")
+        // Run every 10 minutes
     void deleteExpiredSessions() {
 
         karavanCache.getAccessSessions().stream()

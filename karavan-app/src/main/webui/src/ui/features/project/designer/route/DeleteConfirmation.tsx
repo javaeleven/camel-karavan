@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React from 'react';
 import {Button, Modal, ModalBody, ModalFooter, ModalHeader} from '@patternfly/react-core';
 import {useRouteDesignerHook} from "./useRouteDesignerHook";
 import {useDesignerStore} from "../DesignerStore";

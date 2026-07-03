@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import * as React from 'react';
 import './TopologyLegend.css';
 import {Card, CardBody, CardTitle, Label,} from "@patternfly/react-core";
 import {getDesignerIcon, OpenApiIcon} from "@features/project/designer/icons/KaravanIcons";

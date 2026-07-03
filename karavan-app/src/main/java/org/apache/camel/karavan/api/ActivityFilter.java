@@ -11,11 +11,11 @@ import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.ext.Provider;
-import org.apache.camel.karavan.cache.ProjectFolder;
+import lombok.RequiredArgsConstructor;
 import org.apache.camel.karavan.model.ActivityContainer;
 import org.apache.camel.karavan.model.ActivityProject;
 import org.apache.camel.karavan.model.ActivityUser;
-import org.jboss.logging.Logger;
+import org.apache.camel.karavan.model.ProjectFolder;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -25,18 +25,15 @@ import static org.apache.camel.karavan.KaravanEvents.ON_USER_ACTIVITY;
 
 @Provider
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ActivityFilter extends AbstractApiResource implements ContainerResponseFilter, ContainerRequestFilter {
 
-    private static final Logger LOG = Logger.getLogger(ActivityFilter.class);
     private static final String projectIdKey = "projectId";
     private static final String nameKey = "name";
     private static final String usernameKey = "username";
-
+    private final EventBus eventBus;
     @Context
     UriInfo info;
-
-    @Inject
-    EventBus eventBus;
 
     @Override
     public void filter(ContainerRequestContext requestContext, ContainerResponseContext responseContext) throws IOException {
@@ -91,7 +88,8 @@ public class ActivityFilter extends AbstractApiResource implements ContainerResp
                     eventBus.publish(ON_PROJECT_ACTIVITY, JsonObject.mapFrom(ActivityProject.createAdd(userName, projectId)));
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
     }
 }
 

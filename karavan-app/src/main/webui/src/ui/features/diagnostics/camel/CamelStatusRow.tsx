@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {CodeBlock, CodeBlockCode, Label, Tab, Tabs,} from '@patternfly/react-core';
 import {Tbody, Td, Tr} from '@patternfly/react-table';
 import {CamelStatus} from "@models/ProjectModels";
@@ -44,7 +44,7 @@ export function CamelStatusRow(props: Props) {
                         ))}
                     </Tabs>
                     <CodeBlock>
-                        <CodeBlockCode id="code-content">{camel.statuses.filter(s => s.name === tab).at(0)?.status}</CodeBlockCode>
+                        <CodeBlockCode id="code-content">{camel.statuses.find(s => s.name === tab)?.status}</CodeBlockCode>
                     </CodeBlock>
                 </Td>
             </Tr>

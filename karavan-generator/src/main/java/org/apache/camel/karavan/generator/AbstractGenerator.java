@@ -16,8 +16,6 @@
  */
 package org.apache.camel.karavan.generator;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import org.apache.camel.catalog.CamelCatalog;
@@ -36,14 +34,13 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+@lombok.extern.slf4j.Slf4j
 public class AbstractGenerator {
 
     public static final List<String> deprecatedClasses = new ArrayList<>();
 
-    Logger LOGGER = Logger.getLogger(AbstractGenerator.class.getName());
     protected static boolean print = false;
     protected final String rootPath;
 
@@ -53,15 +50,12 @@ public class AbstractGenerator {
 
     protected void print(String line) {
         if (print) {
-            System.out.println(line);
+            log.info(line);
         }
     }
 
-    protected Vertx vertx = Vertx.vertx();
-
     protected JsonObject getDefinitions(String source) {
-        Buffer buffer = vertx.fileSystem().readFileBlocking(source);
-        return new JsonObject(buffer).getJsonObject("items").getJsonObject("definitions");
+        return new JsonObject(readFileText(source)).getJsonObject("items").getJsonObject("definitions");
     }
 
     protected JsonObject getDefinitions() {
@@ -254,8 +248,11 @@ public class AbstractGenerator {
     }
 
     protected String readFileText(String template) {
-        Buffer templateBuffer = vertx.fileSystem().readFileBlocking(template);
-        return templateBuffer.toString();
+        try {
+            return java.nio.file.Files.readString(java.nio.file.Path.of(template));
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("Cannot read " + template, e);
+        }
     }
 
     protected void saveFile(String folder, String fileName, String text) {
@@ -266,7 +263,7 @@ public class AbstractGenerator {
                 Files.createDirectories(path);
             }
             File targetFile = Paths.get(folder, fileName).toFile();
-            LOGGER.info("Saving file " + targetFile.getAbsolutePath());
+            log.info("Saving file " + targetFile.getAbsolutePath());
             Files.copy(new ByteArrayInputStream(text.getBytes()), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             e.printStackTrace();
@@ -594,14 +591,14 @@ public class AbstractGenerator {
                         .forEach(result::add);
             } catch (IOException e) {
                 var error = e.getCause() != null ? e.getCause() : e;
-                LOGGER.severe("IOException " + error.getMessage());
+                log.error("IOException {}", error.getMessage());
             }
             if (fileSystem != null) {
                 fileSystem.close();
             }
         } catch (URISyntaxException | IOException e) {
             var error = e.getCause() != null ? e.getCause() : e;
-            LOGGER.severe("URISyntaxException | IOException " + error.getMessage());
+            log.error("URISyntaxException | IOException " + error.getMessage());
         }
         return result;
     }

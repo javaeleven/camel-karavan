@@ -24,10 +24,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.docker.DockerLogCallback;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
-import org.jboss.logging.Logger;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,19 +36,18 @@ import java.io.InputStreamReader;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class LogStreamingService {
 
-    private static final Logger LOGGER = Logger.getLogger(LogStreamingService.class.getName());
     public static final String SERVICE_NAME = "LOG_WATCH";
 
     private final ConcurrentHashMap<String, Tuple2<LogWatch, KubernetesClient>> logWatches = new ConcurrentHashMap<>();
 
-    @Inject
-    KubernetesService kubernetesService;
+    private final KubernetesService kubernetesService;
 
-    @Inject
-    DockerService dockerService;
+    private final DockerService dockerService;
 
     public void streamLog(String type, String name, String username, SseEventSink eventSink, Sse sse) {
         String oldName = Thread.currentThread().getName();
@@ -64,7 +64,7 @@ public class LogStreamingService {
     }
 
     private void streamDockerLogs(String name, SseEventSink eventSink, Sse sse) {
-        LOGGER.info("LogWatch for " + name + " starting (Docker)");
+        log.info("LogWatch for " + name + " starting (Docker)");
         final DockerLogCallback[] callbackHolder = new DockerLogCallback[1];
 
         callbackHolder[0] = new DockerLogCallback(line -> {
@@ -79,12 +79,12 @@ public class LogStreamingService {
                         .toCompletableFuture()
                         .join();
             } catch (CompletionException | IOException e) {
-                LOGGER.info("Browser disconnected from " + name + ". Stopping Docker stream.");
+                log.info("Browser disconnected from " + name + ". Stopping Docker stream.");
                 try {
                     if (callbackHolder[0] != null) callbackHolder[0].close();
                 } catch (IOException ex) { /* ignore */ }
             } catch (Exception e) {
-                LOGGER.error("Error sending log event: " + e.getMessage());
+                log.error("Error sending log event: " + e.getMessage());
             }
         });
 
@@ -97,9 +97,9 @@ public class LogStreamingService {
 
             callbackHolder[0].awaitCompletion();
         } catch (InterruptedException e) {
-            LOGGER.info("LogWatch interrupted for " + name);
+            log.info("LogWatch interrupted for " + name);
         } catch (Exception e) {
-            LOGGER.error("Docker Log Error for " + name + ": " + e.getMessage());
+            log.error("Docker Log Error for " + name + ": " + e.getMessage());
         } finally {
             cleanupDockerResources(callbackHolder[0], eventSink, name);
         }
@@ -120,13 +120,13 @@ public class LogStreamingService {
                                 .toCompletableFuture()
                                 .join();
                     } catch (Exception e) {
-                        LOGGER.debug("Client disconnected during K8s log stream");
+                        log.debug("Client disconnected during K8s log stream");
                         break; // Stop reading immediately
                     }
                 }
             }
         } catch (Exception e) {
-            LOGGER.error("Kubernetes Log Error for " + name + ": " + e.getMessage());
+            log.error("Kubernetes Log Error for " + name + ": " + e.getMessage());
         } finally {
             cleanupK8sResources(request, eventSink, name);
         }
@@ -135,9 +135,11 @@ public class LogStreamingService {
     private void cleanupDockerResources(DockerLogCallback callback, SseEventSink sink, String name) {
         try {
             if (callback != null) callback.close();
-        } catch (Exception e) { LOGGER.warn("Error closing callback", e); }
+        } catch (Exception e) {
+            log.warn("Error closing callback", e);
+        }
         if (!sink.isClosed()) sink.close();
-        LOGGER.info("LogWatch for " + name + " ended");
+        log.info("LogWatch for " + name + " ended");
     }
 
     private void cleanupK8sResources(Tuple2<LogWatch, KubernetesClient> request, SseEventSink sink, String name) {
@@ -145,10 +147,12 @@ public class LogStreamingService {
             try {
                 if (request.getItem1() != null) request.getItem1().close();
                 if (request.getItem2() != null) request.getItem2().close();
-            } catch (Exception e) { LOGGER.warn("Error closing K8s resources", e); }
+            } catch (Exception e) {
+                log.warn("Error closing K8s resources", e);
+            }
         }
         if (!sink.isClosed()) sink.close();
-        LOGGER.info("LogWatch for " + name + " ended");
+        log.info("LogWatch for " + name + " ended");
     }
 
     private void manageK8sSession(String username, String containerName, Tuple2<LogWatch, KubernetesClient> logWatch) {

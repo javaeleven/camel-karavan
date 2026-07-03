@@ -310,9 +310,9 @@ public class StackToServiceSpecConverter {
     /**
      * Converts a duration string (e.g., "30s", "1m", "10000000") into nanoseconds.
      * Accepts:
-     *  - ISO-8601 style (e.g., "PT30S", "PT1M")
-     *  - Simplified Docker style (e.g., "30s", "1m")
-     *  - Plain numeric values (treated as nanoseconds)
+     * - ISO-8601 style (e.g., "PT30S", "PT1M")
+     * - Simplified Docker style (e.g., "30s", "1m")
+     * - Plain numeric values (treated as nanoseconds)
      */
     private static Long parseDurationToNanos(String duration) {
         if (duration == null || duration.isBlank()) return null;

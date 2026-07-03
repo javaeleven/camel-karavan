@@ -49,15 +49,6 @@ public class StaticCacheFilter {
     // The HTML shell must be revalidated each load so a redeploy is picked up.
     static final String NO_CACHE = "no-cache";
 
-    public void register(@Observes Filters filters) {
-        // Register a headers-end handler so we run after the static/Quinoa handler
-        // has set its own Cache-Control, and overwrite it deterministically.
-        filters.register(rc -> {
-            rc.addHeadersEndHandler(v -> applyCacheControl(rc));
-            rc.next();
-        }, 100);
-    }
-
     static void applyCacheControl(RoutingContext rc) {
         final MultiMap headers = rc.response().headers();
         final String path = rc.normalizedPath();
@@ -69,5 +60,14 @@ public class StaticCacheFilter {
         if (contentType != null && contentType.startsWith("text/html")) {
             headers.set(CACHE_CONTROL, NO_CACHE);
         }
+    }
+
+    public void register(@Observes Filters filters) {
+        // Register a headers-end handler so we run after the static/Quinoa handler
+        // has set its own Cache-Control, and overwrite it deterministically.
+        filters.register(rc -> {
+            rc.addHeadersEndHandler(v -> applyCacheControl(rc));
+            rc.next();
+        }, 100);
     }
 }

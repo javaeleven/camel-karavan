@@ -18,43 +18,37 @@ package org.apache.camel.karavan.loader;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.KaravanConstants;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.ProjectFile;
-import org.apache.camel.karavan.cache.ProjectFolder;
+import org.apache.camel.karavan.config.KaravanConfig;
+import org.apache.camel.karavan.model.ProjectFile;
+import org.apache.camel.karavan.model.ProjectFolder;
 import org.apache.camel.karavan.service.CodeService;
-import org.apache.camel.karavan.service.GitHistoryService;
-import org.apache.camel.karavan.service.GitService;
-import org.apache.camel.karavan.service.ProjectService;
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.time.Instant;
 import java.util.Objects;
 
 import static org.apache.camel.karavan.KaravanConstants.DEV;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class GitLoader {
 
-    private static final Logger LOGGER = Logger.getLogger(GitLoader.class.getName());
+    private final KaravanConfig config;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final KaravanCache karavanCache;
 
-    @Inject
-    KaravanCache karavanCache;
-
-    @Inject
-    CodeService codeService;
+    private final CodeService codeService;
 
     public void load() throws Exception {
         // No global Git repository: projects are hydrated from Postgres (CacheLoader)
         // and each is synced to its own remote on demand by its owner. Here we only
         // seed the built-in projects (kamelets/templates/...) from bundled code.
-        LOGGER.info("Starting Project service (per-project git; no global repository)");
-        if (Objects.equals(environment, DEV)) {
+        log.info("Starting Project service (per-project git; no global repository)");
+        if (Objects.equals(config.environment(), DEV)) {
             addKameletsProject();
             addBuildInProject(ProjectFolder.Type.templates.name());
             addBuildInProject(ProjectFolder.Type.configuration.name());
@@ -71,12 +65,12 @@ public class GitLoader {
         try {
             ProjectFolder kamelets = karavanCache.getProject(ProjectFolder.Type.kamelets.name());
             if (kamelets == null) {
-                LOGGER.info("Add custom kamelets project");
+                log.info("Add custom kamelets project");
                 kamelets = new ProjectFolder(ProjectFolder.Type.kamelets.name(), "Custom Kamelets", Instant.now().getEpochSecond() * 1000L, ProjectFolder.Type.kamelets);
                 karavanCache.saveProject(kamelets, false);
             }
         } catch (Exception e) {
-            LOGGER.error("Error during custom kamelets project creation", e);
+            log.error("Error during custom kamelets project creation", e);
         }
     }
 
@@ -102,7 +96,7 @@ public class GitLoader {
                 });
             }
         } catch (Exception e) {
-            LOGGER.error("Error during creation of project " + projectId, e);
+            log.error("Error during creation of project " + projectId, e);
         }
     }
 }

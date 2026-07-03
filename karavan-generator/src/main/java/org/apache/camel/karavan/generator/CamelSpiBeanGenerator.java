@@ -66,19 +66,14 @@ public final class CamelSpiBeanGenerator extends AbstractGenerator {
 //            code.append(System.lineSeparator()).append(bean.encodePrettily());
 //            interfaces.add(bean.getJsonObject("bean").getString("interfaceType"));
 //        });
-//        System.out.println(" beans " + beans.size());
-//        System.out.println(" beans " + beans.stream().filter(filename -> {
 //            var beanName = filename.substring(0, filename.lastIndexOf('.'));
 //            var json = readBean(beanName);
 //            var bean = new JsonObject(json);
 //            var x =  bean.getJsonObject("bean").getString("properties");
 //            if (x == null) {
-//                System.out.println(bean.getJsonObject("bean").getString("name"));;
 //            }
 //            return x == null;
 //        }).count());
-//        System.out.println(" interfaces " + interfaces);
-//        System.out.println(code.toString().length());
     }
 
 }

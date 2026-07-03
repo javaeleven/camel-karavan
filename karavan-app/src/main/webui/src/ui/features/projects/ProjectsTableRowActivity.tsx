@@ -1,4 +1,3 @@
-import React from 'react';
 import {Label, LabelGroup} from "@patternfly/react-core";
 import "./ProjectsTableRowActivity.css"
 

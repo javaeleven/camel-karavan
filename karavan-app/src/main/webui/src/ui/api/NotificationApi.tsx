@@ -78,8 +78,6 @@ export class NotificationApi {
             onmessage(event) {
                 if (event.event !== 'ping') {
                     onmessage(event);
-                } else {
-                    console.log('Notification SSE Ping', event);
                 }
             },
             onclose() {

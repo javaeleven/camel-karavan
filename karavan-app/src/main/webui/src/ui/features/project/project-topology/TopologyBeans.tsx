@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import * as React from 'react';
 import './TopologyBeans.css';
 import {Button, Card, CardBody, CardTitle, Label,} from "@patternfly/react-core";
 import {TopologyUtils} from "@core/api/TopologyUtils";

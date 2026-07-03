@@ -41,10 +41,10 @@ export function ProjectContainersContextProvider({children}: ProjectContainersCo
     // must NOT poison the toolbar and permanently disable the Run button.
     const isLiveContainer = (c: ContainerStatus) =>
         c.state === 'running' || (c.state !== 'unknown' && !!c.containerId && c.containerId.length > 0);
-    const devModeContainerStatus = containerStatuses.filter(c => c.type === 'devmode' && isLiveContainer(c)).at(0);
+    const devModeContainerStatus = containerStatuses.find(c => c.type === 'devmode' && isLiveContainer(c));
     const devModeIsRunning = devModeContainerStatus?.state === 'running';
 
-    const buildContainerStatus = containerStatuses.filter(c => c.type === 'build').at(0);
+    const buildContainerStatus = containerStatuses.find(c => c.type === 'build');
     const buildIsRunning = buildContainerStatus?.state === 'running';
 
     const isKubernetes = config.infrastructure === 'kubernetes'
@@ -56,8 +56,8 @@ export function ProjectContainersContextProvider({children}: ProjectContainersCo
             : runningContainer?.containerName + ':8080'
     );
 
-    const camelStatus = camelStatuses.filter(s => s.projectId === project.projectId).at(0);
-    const contextValue = camelStatus?.statuses?.filter(x => x.name === 'context').at(0);
+    const camelStatus = camelStatuses.find(s => s.projectId === project.projectId);
+    const contextValue = camelStatus?.statuses?.find(x => x.name === 'context');
     const camelContext = contextValue ? JSON.parse(contextValue?.status || '') : {};
 
     const isRunning = packagedIsRunning || devModeIsRunning;

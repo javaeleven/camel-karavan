@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, {JSX, ReactNode, useContext, useEffect, useState} from 'react';
+import {JSX, ReactNode, useContext, useEffect, useState} from 'react';
 import {Button, ToggleGroup, ToggleGroupItem, Tooltip, TooltipPosition} from '@patternfly/react-core';
 import AngleUpIcon from '@patternfly/react-icons/dist/esm/icons/angle-up-icon';
 import AngleDownIcon from '@patternfly/react-icons/dist/esm/icons/angle-down-icon';

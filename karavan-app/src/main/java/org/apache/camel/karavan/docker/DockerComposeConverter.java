@@ -142,7 +142,7 @@ public class DockerComposeConverter {
                 if (Tag.NULL.equals(valueNode.getTag())) {
                     return null;// skip 'null' values
                 }
-                if (propertyValue instanceof String && (((String) propertyValue).isEmpty() || ((String) propertyValue).isBlank()) ) {
+                if (propertyValue instanceof String && (((String) propertyValue).isEmpty() || ((String) propertyValue).isBlank())) {
                     return null;// skip '' values
                 }
                 if (valueNode instanceof CollectionNode) {

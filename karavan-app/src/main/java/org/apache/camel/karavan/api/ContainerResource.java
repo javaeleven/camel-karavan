@@ -17,27 +17,23 @@
 package org.apache.camel.karavan.api;
 
 import io.quarkus.security.Authenticated;
-import io.smallrye.mutiny.Multi;
 import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
-import io.vertx.mutiny.core.eventbus.Message;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.KaravanConstants;
-import org.apache.camel.karavan.cache.ContainerType;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.PodContainerStatus;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.docker.StackToServiceSpecConverter;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
-import org.apache.camel.karavan.model.DockerComposeService;
-import org.apache.camel.karavan.model.DockerStackService;
+import org.apache.camel.karavan.model.*;
 import org.apache.camel.karavan.service.ConfigService;
 import org.apache.camel.karavan.service.ProjectService;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
+import org.apache.camel.karavan.service.deployment.DeploymentService;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,28 +41,24 @@ import java.util.stream.Collectors;
 import static org.apache.camel.karavan.KaravanConstants.*;
 import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_UPDATED;
 
+@Slf4j
 @Path("/ui/container")
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class ContainerResource {
 
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
-    @Inject
-    KubernetesService kubernetesService;
+    private final KubernetesService kubernetesService;
 
-    @Inject
-    DockerService dockerService;
+    private final DockerService dockerService;
 
-    @Inject
-    ProjectService projectService;
+    private final ProjectService projectService;
 
-    @ConfigProperty(name = "karavan.environment", defaultValue = KaravanConstants.DEV)
-    String environment;
+    private final DeploymentService deploymentService;
 
-    private static final Logger LOGGER = Logger.getLogger(ContainerResource.class.getName());
+    private final KaravanConfig config;
 
     @GET
     @Authenticated
@@ -84,43 +76,38 @@ public class ContainerResource {
     @Path("/{projectId}/{type}/{name}")
     public Response manageContainer(@PathParam("projectId") String projectId, @PathParam("type") String type, @PathParam("name") String name, JsonObject command) {
         try {
+            ContainerCommand cmd = ContainerCommand.fromString(command.getString("command"));
             if (ConfigService.inKubernetes()) {
-                if (command.getString("command").equalsIgnoreCase("delete")) {
-                    kubernetesService.deletePod(name);
+                if (cmd == ContainerCommand.delete) {
+                    deploymentService.deleteWorkload(name);
                     return Response.ok().build();
                 }
-            } else {
+            } else if (cmd != null) {
                 // set container statuses
                 setContainerStatusTransit(projectId, name, type);
                 // exec docker commands
-                if (command.containsKey("command")) {
-                    if (dockerService.isInSwarmMode()) {
-                        if (command.getString("command").equalsIgnoreCase("deploy")) {
-                            deployService(projectId, type, command);
-                        } else if (command.getString("command").equalsIgnoreCase("delete")) {
-                            dockerService.deleteService(projectId);
-                        }
-                    } else {
-                        if (command.getString("command").equalsIgnoreCase("deploy")) {
-                            deployContainer(projectId, type, command);
-                        } else if (command.getString("command").equalsIgnoreCase("run")) {
-                            dockerService.runContainer(name);
-                        } else if (command.getString("command").equalsIgnoreCase("stop")) {
-                            dockerService.stopContainer(name);
-                        } else if (command.getString("command").equalsIgnoreCase("pause")) {
-                            dockerService.pauseContainer(name);
-                        } else if (command.getString("command").equalsIgnoreCase("delete")) {
-                            dockerService.deleteContainer(name);
-                        }
+                if (dockerService.isInSwarmMode()) {
+                    switch (cmd) {
+                        case deploy -> deployService(projectId, type, command);
+                        case delete -> dockerService.deleteService(projectId);
+                        default -> { /* not applicable in swarm mode */ }
                     }
-                    return Response.ok().build();
+                } else {
+                    switch (cmd) {
+                        case deploy -> deployContainer(projectId, type, command);
+                        case run -> dockerService.runContainer(name);
+                        case stop -> dockerService.stopContainer(name);
+                        case pause -> dockerService.pauseContainer(name);
+                        case delete -> deploymentService.deleteWorkload(name);
+                    }
                 }
+                return Response.ok().build();
             }
             return Response.ok().build();
         } catch (Exception e) {
             var error = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-            var result = "Error while executing command " + command + " on " + projectId + ": "+ error;
-            LOGGER.error(result);
+            var result = "Error while executing command " + command + " on " + projectId + ": " + error;
+            log.error(result);
             return Response.serverError().entity(result).build();
         }
     }
@@ -165,27 +152,18 @@ public class ContainerResource {
     private DockerService.PULL_IMAGE needPull(JsonObject command) {
         try {
             return DockerService.PULL_IMAGE.valueOf(command.getString("pullImage"));
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return DockerService.PULL_IMAGE.never;
     }
 
     private void setContainerStatusTransit(String projectId, String name, String type) {
-        PodContainerStatus status = karavanCache.getPodContainerStatus(projectId, environment, name);
+        PodContainerStatus status = karavanCache.getPodContainerStatus(projectId, config.environment(), name);
         if (status == null) {
-            status = PodContainerStatus.createByType(projectId, environment, ContainerType.valueOf(type));
+            status = PodContainerStatus.createByType(projectId, config.environment(), ContainerType.valueOf(type));
         }
         status.setInTransit(true);
         eventBus.publish(POD_CONTAINER_UPDATED, JsonObject.mapFrom(status));
-    }
-
-    @GET
-    @Path("/{env}")
-    @Authenticated
-    @Produces(MediaType.APPLICATION_JSON)
-    public List<PodContainerStatus> getContainerStatusesByEnv(@PathParam("env") String env) throws Exception {
-        return karavanCache.getPodContainerStatuses(env).stream()
-                .sorted(Comparator.comparing(PodContainerStatus::getProjectId))
-                .collect(Collectors.toList());
     }
 
     @GET
@@ -207,24 +185,11 @@ public class ContainerResource {
         // set container statuses
         setContainerStatusTransit(projectId, name, type);
         try {
-            if (ConfigService.inKubernetes()) {
-                kubernetesService.deletePod(name);
-            } else {
-                dockerService.deleteContainer(name);
-            }
+            deploymentService.deleteWorkload(name);
             return Response.accepted().build();
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
             return Response.notModified().build();
         }
-    }
-
-    @GET
-    @Path("/log/watch/{env}/{name}")
-    @Authenticated
-    @Produces(MediaType.SERVER_SENT_EVENTS)
-    public Multi<String> getContainerLogWatch(@PathParam("env") String env, @PathParam("name") String name) {
-        LOGGER.info("Start sourcing");
-        return eventBus.<String>consumer(name + "-" + kubernetesService.getNamespace()).toMulti().map(Message::body);
     }
 }

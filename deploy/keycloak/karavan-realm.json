@@ -1,0 +1,107 @@
+{
+  "realm": "karavan",
+  "enabled": true,
+  "registrationAllowed": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "platform-admin",
+        "description": "Karavan platform admin"
+      },
+      {
+        "name": "platform-developer",
+        "description": "Karavan platform developer"
+      },
+      {
+        "name": "platform-user",
+        "description": "Karavan platform user"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@karavan.local",
+      "emailVerified": true,
+      "firstName": "Karavan",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "karavan",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "platform-admin",
+        "platform-developer",
+        "platform-user",
+        "offline_access"
+      ]
+    },
+    {
+      "username": "developer",
+      "enabled": true,
+      "email": "developer@karavan.local",
+      "emailVerified": true,
+      "firstName": "Karavan",
+      "lastName": "Developer",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "karavan",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "platform-developer",
+        "platform-user",
+        "offline_access"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "backend",
+      "name": "Karavan backend (BFF)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "karavan",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ],
+      "protocolMappers": [
+        {
+          "name": "realm-roles-in-tokens",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

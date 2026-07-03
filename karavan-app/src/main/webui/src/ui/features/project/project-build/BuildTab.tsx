@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import React from 'react';
 import '@features/project/designer/karavan.css';
 import {ContainerLogTab} from "@features/project/ContainerLogTab";
 import {ProjectContainersContextProvider} from "@features/project/ProjectContainersContextProvider";

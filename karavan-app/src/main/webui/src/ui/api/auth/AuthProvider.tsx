@@ -45,20 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Per-mode logout (the single place that owns this decision).
     const logout = useCallback(async () => {
         setLoading(true);
-        if (authType === 'oidc') {
-            // BFF: full-page nav to the Quarkus OIDC logout endpoint, which
-            // clears the session cookie and ends the IdP session.
-            setUser(null);
-            window.location.assign('/logout');
-        } else if (authType === 'session') {
-            await AuthApi.logout();
-            setUser(null);
-            setLoading(false);
-            window.location.reload();
-        } else {
-            setUser(null);
-            setLoading(false);
-        }
+        // SSO-only: full-page nav to the Quarkus OIDC logout endpoint, which
+        // clears the session cookie and ends the IdP session.
+        setUser(null);
+        window.location.assign('/logout');
     }, [authType]);
 
     return (

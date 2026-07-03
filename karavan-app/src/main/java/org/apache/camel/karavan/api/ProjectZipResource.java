@@ -8,12 +8,12 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.ProjectFile;
-import org.apache.camel.karavan.cache.ProjectFolder;
+import org.apache.camel.karavan.model.ProjectFile;
+import org.apache.camel.karavan.model.ProjectFolder;
 import org.apache.camel.karavan.service.CodeService;
 import org.apache.camel.karavan.service.ZipService;
-import org.jboss.logging.Logger;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -30,10 +30,9 @@ import java.util.zip.ZipInputStream;
 
 import static org.apache.camel.karavan.KaravanEvents.NOTIFICATION_PROJECTS_IMPORTED;
 
+@Slf4j
 @Path("/ui/zip")
 public class ProjectZipResource {
-
-    private static final Logger LOGGER = Logger.getLogger(ProjectZipResource.class.getName());
 
     @Inject
     ZipService zipService;
@@ -71,7 +70,7 @@ public class ProjectZipResource {
                 return Response.notModified().entity(name).build();
             }
         } catch (Exception e) {
-            LOGGER.error("Error uploading file", e);
+            log.error("Error uploading file", e);
             return Response.serverError().entity(e.getMessage()).build();
         }
     }

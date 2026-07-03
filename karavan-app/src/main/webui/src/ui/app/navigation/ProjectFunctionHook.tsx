@@ -6,7 +6,7 @@ import {CamelUi} from "@features/project/designer/utils/CamelUi";
 import {KaravanApi} from "@api/KaravanApi";
 import {Integration} from "@core/model/IntegrationDefinition";
 import {FILE_WORDS_SEPARATOR, KARAVAN_DOT_EXTENSION, KARAVAN_FILENAME, OPENAPI_FILE_NAME_JSON} from "@core/contants";
-import {FromDefinition, RouteConfigurationDefinition} from "@core/model/CamelDefinition";
+import {RouteConfigurationDefinition} from "@core/model/CamelDefinition";
 import {CamelDefinitionApiExt} from "@core/api/CamelDefinitionApiExt";
 import {CamelDefinitionYaml} from "@core/api/CamelDefinitionYaml";
 import {CamelDefinitionApi} from "@core/api/CamelDefinitionApi";

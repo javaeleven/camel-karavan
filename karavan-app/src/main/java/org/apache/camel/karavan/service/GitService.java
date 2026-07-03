@@ -21,11 +21,10 @@ import io.smallrye.mutiny.tuples.Tuple3;
 import io.vertx.core.Vertx;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.cache.ProjectFile;
-import org.apache.camel.karavan.cache.ProjectFolder;
-import org.apache.camel.karavan.cache.UserGitConfig;
-import org.apache.camel.karavan.model.GitConfig;
-import org.apache.camel.karavan.model.PathCommitDetails;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.config.KaravanConfig;
+import org.apache.camel.karavan.model.*;
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.InvalidRemoteException;
@@ -34,10 +33,11 @@ import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.transport.*;
+import org.eclipse.jgit.transport.PushResult;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
+import org.eclipse.jgit.transport.URIish;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,7 +46,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -55,30 +58,26 @@ import java.util.regex.Pattern;
  * / {@link ProjectFolder#getGitBranch()}) and authenticates with the acting
  * user's credentials ({@link UserGitConfig}, configured in System -> Git). A
  * project with no remote configured has no Git operations available.
- *
+ * <p>
  * Files of a project live under a {@code <projectId>/} folder inside its repo
  * (the same layout the build container expects: {@code git clone} then
  * {@code cd <repo>/<projectId>}).
  */
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class GitService {
 
-    // Optional SSH key material for the build container (mounted into builds).
-    // Not used to authenticate the control-plane's own Git operations, which are
+    // Optional SSH key material for the build container (mounted into builds)
+    // comes from karavan.private-key-path / karavan.known-hosts-path. Not used
+    // to authenticate the control-plane's own Git operations, which are
     // HTTPS + per-user token only.
-    @ConfigProperty(name = "karavan.private-key-path")
-    Optional<String> privateKeyPath;
+    private final KaravanConfig config;
 
-    @ConfigProperty(name = "karavan.known-hosts-path")
-    Optional<String> knownHostsPath;
-
-    @Inject
-    Vertx vertx;
-
-    private static final Logger LOGGER = Logger.getLogger(GitService.class.getName());
+    private final Vertx vertx;
 
     public Tuple2<String, String> getSShFiles() {
-        return Tuple2.of(privateKeyPath.orElse(null), knownHostsPath.orElse(null));
+        return Tuple2.of(config.privateKeyPath().orElse(null), config.knownHostsPath().orElse(null));
     }
 
     public boolean hasRemote(ProjectFolder projectFolder) {
@@ -105,11 +104,11 @@ public class GitService {
     }
 
     public Tuple3<RevCommit, List<RemoteRefUpdate.Status>, List<String>> commitAndPushProject(ProjectFolder projectFolder, List<ProjectFile> files, String message, String authorName, String authorEmail, List<String> fileNames, UserGitConfig user) throws GitAPIException, IOException, URISyntaxException {
-        LOGGER.info("Commit and push project " + projectFolder.getProjectId());
+        log.info("Commit and push project " + projectFolder.getProjectId());
         GitConfig gitConfig = resolveGitConfig(projectFolder, user);
         String uuid = UUID.randomUUID().toString();
         String folder = vertx.fileSystem().createTempDirectoryBlocking(uuid);
-        LOGGER.info("Temp folder created " + folder);
+        log.info("Temp folder created " + folder);
         Git git = getGit(true, folder, gitConfig);
         writeProjectToFolder(folder, projectFolder, files);
         addDeletedFilesToIndex(git, folder, projectFolder, files);
@@ -123,7 +122,9 @@ public class GitService {
         return readProjectsFromRepository(git, projectId).stream().filter(d -> Objects.equals(d.projectId(), projectId)).toList();
     }
 
-    /** Clone a project's own repo into {@code folder} for read-only inspection (e.g. commit history). */
+    /**
+     * Clone a project's own repo into {@code folder} for read-only inspection (e.g. commit history).
+     */
     public Git getProjectGit(ProjectFolder projectFolder, UserGitConfig user, String folder) throws GitAPIException, IOException, URISyntaxException {
         return getGit(true, folder, resolveGitConfig(projectFolder, user));
     }
@@ -182,19 +183,19 @@ public class GitService {
     }
 
     private List<PathCommitDetails> readProjectsFromRepository(Git git, String... filter) {
-        LOGGER.info("Read projects...");
+        log.info("Read projects...");
         List<PathCommitDetails> result = new ArrayList<>();
         try {
             return getLastCommitForEachFile(git);
         } catch (RefNotFoundException e) {
-            LOGGER.error("New repository");
+            log.error("New repository");
             return result;
         } catch (IllegalStateException e) {
             // Empty repo (no HEAD yet) — nothing to import.
-            LOGGER.info(e.getMessage());
+            log.info(e.getMessage());
             return result;
         } catch (Exception e) {
-            LOGGER.error("Error", e);
+            log.error("Error", e);
             return result;
         }
     }
@@ -206,7 +207,7 @@ public class GitService {
      * (TransportException) propagate so the caller can surface a proper error.
      */
     public Git getGit(boolean checkout, String folder, GitConfig gitConfig) throws GitAPIException, IOException, URISyntaxException {
-        LOGGER.info("Git checkout " + gitConfig.getUri());
+        log.info("Git checkout " + gitConfig.getUri());
         Git git;
         try {
             // A branch newly created in Karavan (e.g. to test a different runtime) does
@@ -225,13 +226,15 @@ public class GitService {
             }
         } catch (RefNotFoundException | InvalidRemoteException e) {
             // Reachable remote with no refs at all yet (brand-new/empty repo) -> init locally.
-            LOGGER.warn("New/empty repository, initializing locally: " + e.getMessage());
+            log.warn("New/empty repository, initializing locally: " + e.getMessage());
             git = init(folder, gitConfig.getUri(), gitConfig.getBranch());
         }
         return git;
     }
 
-    /** Whether {@code gitConfig.getBranch()} already exists on the remote (git ls-remote). */
+    /**
+     * Whether {@code gitConfig.getBranch()} already exists on the remote (git ls-remote).
+     */
     private boolean remoteBranchExists(GitConfig gitConfig) {
         try {
             return listRemoteBranches(gitConfig.getUri(), gitConfig.getUsername(), gitConfig.getPassword())
@@ -240,7 +243,7 @@ public class GitService {
             // Couldn't list (brand-new/empty repo or a transient error): assume the branch
             // is absent so we attempt to create it. A real auth/connectivity failure
             // resurfaces on the clone with a clearer message.
-            LOGGER.warn("Could not list remote branches for " + gitConfig.getUri() + ": " + e.getMessage());
+            log.warn("Could not list remote branches for " + gitConfig.getUri() + ": " + e.getMessage());
             return false;
         }
     }
@@ -251,33 +254,33 @@ public class GitService {
      * subsequent push creates it on the remote.
      */
     private void createLocalBranch(Git git, String branch) throws GitAPIException {
-        LOGGER.info("Remote branch '" + branch + "' is missing; creating it locally");
+        log.info("Remote branch '" + branch + "' is missing; creating it locally");
         git.checkout().setCreateBranch(true).setName(branch).call();
     }
 
     private void writeProjectToFolder(String folder, ProjectFolder projectFolder, List<ProjectFile> files) throws IOException {
         Files.createDirectories(Paths.get(folder, projectFolder.getProjectId()));
-        LOGGER.info("Write files for project " + projectFolder.getProjectId());
+        log.info("Write files for project " + projectFolder.getProjectId());
         files.forEach(file -> {
             try {
-                LOGGER.info("Add file " + file.getName());
+                log.info("Add file " + file.getName());
                 Files.writeString(Paths.get(folder, projectFolder.getProjectId(), file.getName()), file.getCode());
             } catch (IOException e) {
-                LOGGER.error("Error during file write", e);
+                log.error("Error during file write", e);
             }
         });
     }
 
     private void addDeletedFilesToIndex(Git git, String folder, ProjectFolder projectFolder, List<ProjectFile> files) throws IOException {
         Path path = Paths.get(folder, projectFolder.getProjectId());
-        LOGGER.info("Add deleted files to git index for project " + projectFolder.getProjectId());
+        log.info("Add deleted files to git index for project " + projectFolder.getProjectId());
         vertx.fileSystem().readDirBlocking(path.toString()).forEach(f -> {
             String[] filenames = f.split(Pattern.quote(File.separator));
             String filename = filenames[filenames.length - 1];
-            LOGGER.info("Checking file " + filename);
+            log.info("Checking file " + filename);
             if (files.stream().filter(pf -> Objects.equals(pf.getName(), filename)).count() == 0) {
                 try {
-                    LOGGER.info("Add deleted file " + filename);
+                    log.info("Add deleted file " + filename);
                     git.rm().addFilepattern(projectFolder.getProjectId() + File.separator + filename).call();
                 } catch (GitAPIException e) {
                     throw new RuntimeException(e);
@@ -287,25 +290,25 @@ public class GitService {
     }
 
     public Tuple3<RevCommit, List<RemoteRefUpdate.Status>, List<String>> commitAddedAndPush(Git git, String branch, String message, String authorName, String authorEmail, List<String> fileNames, String projectId, GitConfig gitConfig) throws GitAPIException {
-        LOGGER.info("Commit and push changes to the branch " + branch);
+        log.info("Commit and push changes to the branch " + branch);
         AddCommand add = git.add();
         for (String fileName : fileNames) {
             add = add.addFilepattern(projectId + File.separator + fileName);
         }
-        LOGGER.info("Git add: " + add.call());
+        log.info("Git add: " + add.call());
         RevCommit commit = git.commit().setMessage(message).setAuthor(new PersonIdent(authorName, authorEmail)).call();
         List<String> messages = new ArrayList<>();
         List<RemoteRefUpdate.Status> statuses = new ArrayList<>();
-        LOGGER.info("Git commit: " + commit);
+        log.info("Git commit: " + commit);
         PushCommand pushCommand = git.push();
         pushCommand.add(branch).setRemote("origin");
         setCredentials(pushCommand, gitConfig);
         Iterable<PushResult> results = pushCommand.call();
         for (PushResult pr : results) {
             if (pr != null) {
-                LOGGER.info("Git push result: " + pr.getMessages());
+                log.info("Git push result: " + pr.getMessages());
                 for (RemoteRefUpdate rru : pr.getRemoteUpdates()) {
-                    LOGGER.info("Git push: " + rru.getStatus() + ", " + rru.getMessage());
+                    log.info("Git push: " + rru.getStatus() + ", " + rru.getMessage());
                     if (RemoteRefUpdate.Status.OK != rru.getStatus()) {
                         statuses.add(rru.getStatus());
                         messages.add(rru.getMessage());
@@ -324,7 +327,7 @@ public class GitService {
     }
 
     private void addDeletedFolderToIndex(Git git, String projectId) {
-        LOGGER.infof("Add folder %s to git index.", projectId);
+        log.info("Add folder {} to git index.", projectId);
         try {
             git.rm().addFilepattern(projectId + File.separator).call();
         } catch (GitAPIException e) {
@@ -334,23 +337,23 @@ public class GitService {
 
     public void deleteProject(ProjectFolder projectFolder, String authorName, String authorEmail, UserGitConfig user) {
         String projectId = projectFolder.getProjectId();
-        LOGGER.info("Delete and push project " + projectId);
+        log.info("Delete and push project " + projectId);
         GitConfig gitConfig = resolveGitConfig(projectFolder, user);
         String uuid = UUID.randomUUID().toString();
         String folder = vertx.fileSystem().createTempDirectoryBlocking(uuid);
         String commitMessage = "Project " + projectId + " is deleted";
-        LOGGER.infof("Temp folder %s is created for deletion of project %s", folder, projectId);
+        log.info("Temp folder {} is created for deletion of project {}", folder, projectId);
         try {
             Git git = getGit(true, folder, gitConfig);
             addDeletedFolderToIndex(git, projectId);
             commitAddedAndPush(git, gitConfig.getBranch(), commitMessage, authorName, authorEmail, List.of("."), projectId, gitConfig);
-            LOGGER.info("Delete Temp folder " + folder);
+            log.info("Delete Temp folder " + folder);
             vertx.fileSystem().deleteRecursiveBlocking(folder);
-            LOGGER.infof("Project %s deleted from Git", projectId);
+            log.info("Project {} deleted from Git", projectId);
         } catch (RefNotFoundException e) {
-            LOGGER.error("Repository not found");
+            log.error("Repository not found");
         } catch (Exception e) {
-            LOGGER.error("Error", e);
+            log.error("Error", e);
             throw new RuntimeException(e);
         }
     }

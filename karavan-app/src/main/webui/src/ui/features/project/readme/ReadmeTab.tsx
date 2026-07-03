@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import React from 'react';
 import MarkdownPreview from '@uiw/react-markdown-preview';
 import {useFilesStore} from "@stores/ProjectStore";
 import {shallow} from "zustand/shallow";

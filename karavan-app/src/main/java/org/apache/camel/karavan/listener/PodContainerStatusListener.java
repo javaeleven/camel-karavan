@@ -22,26 +22,24 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.PodContainerStatus;
-import org.jboss.logging.Logger;
+import org.apache.camel.karavan.model.PodContainerStatus;
 
 import java.time.Instant;
 import java.util.Objects;
 
-import static org.apache.camel.karavan.KaravanEvents.NOTIFICATION_STATUS_UPDATED;
-import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_DELETED;
-import static org.apache.camel.karavan.KaravanEvents.POD_CONTAINER_UPDATED;
+import static org.apache.camel.karavan.KaravanEvents.*;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class PodContainerStatusListener {
-    private static final Logger LOGGER = Logger.getLogger(PodContainerStatusListener.class.getName());
 
-    @Inject
-    KaravanCache karavanCache;
+    private final KaravanCache karavanCache;
 
-    @Inject
-    EventBus eventBus;
+    private final EventBus eventBus;
 
     @ConsumeEvent(value = POD_CONTAINER_DELETED, blocking = true, ordered = true)
     public void cleanContainersStatus(JsonObject data) {
@@ -66,8 +64,8 @@ public class PodContainerStatusListener {
                     savePodContainerStatus(newStatus, oldStatus);
                 }
             }
-        }  catch (Exception e) {
-            LOGGER.error(e.getMessage());
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 

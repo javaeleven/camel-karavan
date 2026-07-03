@@ -1,4 +1,4 @@
-import React, {ReactElement} from 'react';
+import {ReactElement} from 'react';
 import {Bullseye, EmptyState, EmptyStateVariant} from '@patternfly/react-core';
 import '@features/projects/Complexity.css';
 import {Td, Tr} from '@patternfly/react-table';

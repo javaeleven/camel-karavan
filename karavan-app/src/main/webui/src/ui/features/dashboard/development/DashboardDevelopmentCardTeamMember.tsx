@@ -1,4 +1,5 @@
 import React from 'react';
+import {userDisplayName} from '@util/StringUtils';
 import {Badge, Content} from '@patternfly/react-core';
 import {AccessUser} from "@models/AccessModels";
 import {useActivityStore} from "@stores/ActivityStore";
@@ -45,7 +46,8 @@ export function DashboardDevelopmentCardTeamMember(props: Props): React.ReactEle
                     {icon}
                 </div>
                 <div className={"user-card-title"}>
-                    {alive && <Content component='p' style={{lineHeight: '12px', color: fontColor}}>{`${user.firstName} ${user.lastName}`}</Content>}
+                    {alive && userDisplayName(user) !== user.username &&
+                        <Content component='p' style={{lineHeight: '12px', color: fontColor}}>{userDisplayName(user)}</Content>}
                     <Content component='p' style={{fontWeight: 'bold', lineHeight: '10px', color: fontColor}}>{`${user.username}`}</Content>
                 </div>
                 {lastActive && <Badge style={{fontWeight: 'normal', backgroundColor: 'var(--pf-t--global--color--nonstatus--green--default)'}} isRead>{lastActive}</Badge>}

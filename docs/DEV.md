@@ -13,7 +13,7 @@ VS Code extension based on Karavan Designer
 ## How to build Karavan Web Application
 1. Generate Camel Models and API for Typescript
 ```
-mvn clean compile exec:java -Dexec.mainClass="org.apache.camel.karavan.generator.KaravanGenerator" -f karavan-generator
+./gradlew :karavan-generator:run
 ```
 
 2. Install Karavan core library
@@ -24,13 +24,13 @@ npm install
 
 3. Build Karavan app  
 ```
-mvn clean package -f karavan-app -Dquarkus.profile=public 
+./gradlew :karavan-app:build -Dquarkus.profile=public
 ```
 
 ## How to build Karavan VS Code extension
 1. Generate Camel Models and API for Typescript
 ```
-mvn clean compile exec:java -Dexec.mainClass="org.apache.camel.karavan.generator.KaravanGenerator" -f karavan-generator
+./gradlew :karavan-generator:run
 ```
 
 2. Install Karavan core library
@@ -67,18 +67,15 @@ Docker Engine 24+
 2. Add local profile config to the application.properties
 ```
 # Local
-%local.karavan.image-registry-install=true
-%local.karavan.git-install-gitea=true
 %local.quarkus.http.host=localhost
 ```
 
-3. Update hosts.file with below entries
+3. Update hosts.file with below entry (local image registry)
 ```
-127.0.0.1	gitea # karavan local git server
 127.0.0.1   registry # karavan local image registry server
 ```
 
 4. Run ./karavan-app in Quarkus Dev mode
 ```
-mvn clean compile quarkus:dev -Dquarkus.profile=local,public
+./gradlew :karavan-app:quarkusDev -Dquarkus.profile=local,public
 ```

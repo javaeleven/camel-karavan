@@ -1,25 +1,6 @@
-import React, {useContext} from 'react';
-import {
-    Alert,
-    Button,
-    Card,
-    CardBody,
-    CardFooter,
-    CardHeader,
-    Content,
-    Form,
-    FormAlert,
-    FormGroup,
-    TextInput,
-    TextInputGroup,
-    TextInputGroupMain,
-    TextInputGroupUtilities
-} from '@patternfly/react-core';
+import React from 'react';
+import {Button, Card, CardBody, CardFooter, CardHeader, Content} from '@patternfly/react-core';
 import './LoginPage.css'
-import EyeIcon from '@patternfly/react-icons/dist/esm/icons/eye-icon';
-import EyeSlashIcon from '@patternfly/react-icons/dist/esm/icons/eye-slash-icon';
-import {AuthContext} from "@api/auth/AuthProvider";
-import {AuthApi} from "@api/auth/AuthApi";
 import {CamelIcon, KaravanIcon} from "@features/project/designer/icons/KaravanIcons";
 import {SvgIcon} from "@shared/icons/SvgIcon";
 import jibLogo from '@shared/icons/jib.png';
@@ -30,39 +11,11 @@ import {useReadinessStore} from "@stores/ReadinessStore";
 
 export const LoginPage: React.FunctionComponent = () => {
 
-    const [username, setUsername] = React.useState('');
-    const [password, setPassword] = React.useState('');
-    const [passwordHidden, setPasswordHidden] = React.useState(true);
-    const [showError, setShowError] = React.useState(false);
-    const [error, setError] = React.useState('');
-    const {reload, authType} = useContext(AuthContext);
     const { readiness } = useReadinessStore();
 
-    // In OIDC (BFF) mode we do NOT auto-redirect to the IdP on navigation — the
-    // page renders a "Sign in with SSO" button and only that click starts the
-    // server-side login (window.location.assign('/auth/login') in getRightSide).
-
-    function onLoginButtonClick(event: any) {
-        event.preventDefault();
-        AuthApi.login(username, password, (ok, res) => {
-            if (!ok) {
-                setError(res?.response?.data);
-                setShowError(true);
-            } else {
-                setError('');
-                setShowError(false);
-                reload();
-            }
-        })
-    }
-
-    function onKeyDown(event: React.KeyboardEvent<HTMLFormElement>): void {
-        event.stopPropagation();
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            onLoginButtonClick(event);
-        }
-    }
+    // Authentication is SSO-only (OIDC via the Backend-for-Frontend flow). We do
+    // NOT auto-redirect to the IdP on navigation — the page renders a
+    // "Sign in with SSO" button and only that click starts the server-side login.
 
 
     function getLogos() {
@@ -101,75 +54,27 @@ export const LoginPage: React.FunctionComponent = () => {
 
     const LOGOS = getLogos();
 
-    function getLoginForm() {
-        return (
-            <Form onKeyDown={onKeyDown}>
-                <FormGroup fieldId="username">
-                    <TextInput className="text-field"
-                               type="text"
-                               id="username"
-                               name="username"
-                               value={username}
-                               placeholder={"Username"}
-                               onChange={(_, value) => setUsername(value)}/>
-                </FormGroup>
-                <FormGroup fieldId="password">
-                    <TextInputGroup>
-                        <TextInputGroupMain className="text-field"
-                                            type={passwordHidden ? "password" : 'text'}
-                                            id="password"
-                                            name="password"
-                                            value={password}
-                                            placeholder={"Password"}
-                                            onChange={(_, value) => setPassword(value)}
-                        />
-                        <TextInputGroupUtilities>
-                            <Button
-                                variant="plain"
-                                onClick={() => setPasswordHidden(!passwordHidden)}
-                                aria-label={passwordHidden ? 'Show password' : 'Hide password'}
-                            >
-                                {passwordHidden ? <EyeIcon/> : <EyeSlashIcon/>}
-                            </Button>
-                        </TextInputGroupUtilities>
-                    </TextInputGroup>
-                </FormGroup>
-                {showError && (
-                    <FormAlert>
-                        <Alert variant="danger" title={<div>{error?.toString()}</div>} aria-live="polite" isInline/>
-                    </FormAlert>
-                )}
-            </Form>
-        )
-    }
-
 
     function getRightSide() {
-        const oidc = authType === 'oidc';
         return (
             <div className="karavan-form-panel dark-form">
                 <div className="form-wrapper">
                     <Card className="login" isLarge>
                         <CardHeader>
                             <div style={{display: "flex", flexDirection: 'row', justifyContent: 'space-between', alignItems: "center"}}>
-                                <Content component='h3' className="login-header">{oidc ? "Single Sign-On" : "Login"}</Content>
+                                <Content component='h3' className="login-header">Single Sign-On</Content>
                                 <PlatformVersion environment={readiness?.environment}/>
                             </div>
                         </CardHeader>
                         <CardBody>
-                            {oidc
-                                ? <Content component="p">Sign in with your organization account to continue.</Content>
-                                : getLoginForm()}
+                            <Content component="p">Sign in with your organization account to continue.</Content>
                         </CardBody>
                         <CardFooter style={{ textAlign: "center" }}>
-                            <Button variant="primary"
-                                    onClick={oidc ? () => window.location.assign('/auth/login') : onLoginButtonClick}
-                            >
-                                {oidc ? "Sign in with SSO" : "Access Platform"}
+                            <Button variant="primary" onClick={() => window.location.assign('/auth/login')}>
+                                Sign in with SSO
                             </Button>
                         </CardFooter>
                     </Card>
-                    {/*<DarkModeToggle/>*/}
                 </div>
             </div>
         )

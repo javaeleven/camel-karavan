@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import React from 'react';
 import {ClipboardCopy, Content, Flex, FlexItem, Label, Tooltip,} from '@patternfly/react-core';
 import CodeBranchIcon from "@patternfly/react-icons/dist/esm/icons/code-branch-icon";
 import {useFileStore, useProjectStore} from "@stores/ProjectStore";

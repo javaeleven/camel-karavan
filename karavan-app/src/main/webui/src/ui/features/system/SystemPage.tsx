@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Button, capitalize, Content, Nav, NavItem, NavList, TextInputGroup, TextInputGroupMain, TextInputGroupUtilities, Tooltip} from '@patternfly/react-core';
 import RefreshIcon from "@patternfly/react-icons/dist/esm/icons/sync-alt-icon";
 import {SystemService} from "@services/SystemService";

@@ -1,4 +1,3 @@
-import * as React from 'react';
 import './TopologyDocumentation.css';
 import {Button, Card, CardBody, Label,} from "@patternfly/react-core";
 import {useFilesStore} from "@stores/ProjectStore";

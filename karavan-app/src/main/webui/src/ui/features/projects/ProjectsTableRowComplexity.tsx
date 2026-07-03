@@ -1,4 +1,3 @@
-import React from 'react';
 import {Label, Tooltip} from '@patternfly/react-core';
 import './Complexity.css';
 import {ComplexityProject, ComplexityType, getComplexityColor, getMaxComplexity} from "./ComplexityModels";

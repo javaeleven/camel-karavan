@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {Button, Modal, ModalBody, ModalFooter, ModalHeader, Spinner} from '@patternfly/react-core';
 import './DiffFileModal.css';
 import {useFileStore, useProjectStore} from "@stores/ProjectStore";

@@ -140,7 +140,7 @@ export function useProjectHook() {
 
 
     function onOpenApiButtonClick() {
-        const openApiFile = files.filter(f => f.name === OPENAPI_FILE_NAME_JSON)?.at(0);
+        const openApiFile = files.find(f => f.name === OPENAPI_FILE_NAME_JSON);
         if (openApiFile === undefined) {
             createOpenApiRestFile();
             setDesignerSwitch(true);

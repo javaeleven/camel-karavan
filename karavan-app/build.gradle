@@ -35,13 +35,20 @@ dependencies {
     implementation 'io.quarkus:quarkus-minikube'
     implementation 'io.quarkus:quarkus-oidc'
     implementation 'io.quarkus:quarkus-smallrye-health'
+    implementation 'io.quarkus:quarkus-hibernate-validator'
     implementation 'org.apache.commons:commons-text'
+
+    // Lombok — boilerplate reduction for data/model classes
+    compileOnly "org.projectlombok:lombok:${v('lombokVersion')}"
+    annotationProcessor "org.projectlombok:lombok:${v('lombokVersion')}"
 
     // Docker
     implementation "com.github.docker-java:docker-java-core:${v('dockerJavaVersion')}"
     implementation "com.github.docker-java:docker-java-transport-httpclient5:${v('dockerJavaVersion')}"
 
     implementation 'io.quarkus:quarkus-container-image-jib'
+    // Jib Core SDK: the app derives + pushes the devmode image itself (no Docker daemon).
+    implementation "com.google.cloud.tools:jib-core:${v('jibCoreVersion')}"
     implementation "io.quarkiverse.quinoa:quarkus-quinoa:${v('quinoaVersion')}"
 
     // Hibernate ORM + Postgres JDBC + Flyway

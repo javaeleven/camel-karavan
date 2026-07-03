@@ -7,9 +7,10 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
-import org.apache.camel.karavan.cache.AccessSession;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.cache.CacheEvent;
-import org.jboss.logging.Logger;
+import org.apache.camel.karavan.model.AccessSession;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,30 +18,28 @@ import java.util.Objects;
 
 import static org.apache.camel.karavan.KaravanEvents.*;
 
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class PersistenceService {
 
-    private static final Logger LOGGER = Logger.getLogger(PersistenceService.class.getName());
-
-    @Inject
-    EntityManager entityManager;
-
+    // Upserts: created_at is written on INSERT only (audit — never overwritten);
+    // last_update is refreshed on every write.
     private static final String SAVE_SQL =
-            "INSERT INTO %s (key, type, data, last_update) " +
-                    "VALUES (:key, :type, CAST(:data AS jsonb), :now) " +
+            "INSERT INTO %s (key, type, data, last_update, created_at) " +
+                    "VALUES (:key, :type, CAST(:data AS jsonb), :now, :now) " +
                     "ON CONFLICT (key) DO UPDATE SET " +
                     "type = EXCLUDED.type, " +
                     "data = EXCLUDED.data, " +
                     "last_update = EXCLUDED.last_update";
-
     private static final String SAVE_SESSION_SQL =
-            "INSERT INTO session_state (key, type, data, expiry, last_update) " + // Added expiry
-                    "VALUES (:key, :type, CAST(:data AS jsonb), :expiry, :now) " +
+            "INSERT INTO session_state (key, type, data, expiry, last_update, created_at) " +
+                    "VALUES (:key, :type, CAST(:data AS jsonb), :expiry, :now, :now) " +
                     "ON CONFLICT (key) DO UPDATE SET " +
                     "type = EXCLUDED.type, data = EXCLUDED.data, " +
                     "expiry = EXCLUDED.expiry, last_update = EXCLUDED.last_update";
-
     private static final String DELETE_SQL = "DELETE FROM %s WHERE key = :key";
+    private final EntityManager entityManager;
 
     @ConsumeEvent(value = PERSIST_PROJECT, blocking = true, ordered = true)
     @Transactional
@@ -67,9 +66,11 @@ public class PersistenceService {
                 String json = Objects.requireNonNull(JsonObject.mapFrom(event.data())).encode();
                 String entityName = event.data().getClass().getSimpleName();
 
-                String sql = tableName.equals(SessionCacheEntity.TABLE_NAME) ? SAVE_SESSION_SQL : String.format(SAVE_SQL, tableName);
+                String sql = tableName.equals(SessionCacheEntity.TABLE_NAME)
+                        ? SAVE_SESSION_SQL
+                        : String.format(SAVE_SQL, tableName);
 
-                query = entityManager.createNativeQuery(String.format(sql, tableName))
+                query = entityManager.createNativeQuery(sql)
                         .setParameter("key", event.key())
                         .setParameter("type", entityName)
                         .setParameter("data", json)
@@ -84,7 +85,7 @@ public class PersistenceService {
             }
             query.executeUpdate();
         } catch (Exception e) {
-            LOGGER.errorf(e, "Failed to persist event %s in %s with key %s", event.operation(), tableName, event.key());
+            log.error("Failed to persist event {} in {} with key {}", event.operation(), tableName, event.key(), e);
         }
     }
 

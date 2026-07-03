@@ -1,4 +1,4 @@
-import React, {ReactElement, useEffect, useState} from 'react';
+import {ReactElement, useEffect, useState} from 'react';
 import {Badge, Bullseye, Button, EmptyState, EmptyStateVariant, Flex, Label, Tooltip} from '@patternfly/react-core';
 import '@features/projects/Complexity.css';
 import {InnerScrollContainer, OuterScrollContainer, Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
@@ -66,7 +66,7 @@ export function FilesTab(props: FilesTabWithComplexityProps) {
         .map(name => diff[name] === 'DELETED' ? name : '')
         .filter(name => name !== '' && !filenames.includes(name));
     const deletedFiles: ProjectFile[] = deletedFilenames.map(d => new ProjectFile(d, project.projectId, '', 0));
-    const filedFound = searchResults.filter(s => s.projectId === project.projectId)?.at(0)?.files || [];
+    const filedFound = searchResults.find(s => s.projectId === project.projectId)?.files || [];
     const allFiles = files.concat(deletedFiles).filter(f => filedFound.includes(f.name) || search === '');
     const isBuildInProject = BUILD_IN_PROJECTS.includes(project.projectId);
     const envs = config.environments

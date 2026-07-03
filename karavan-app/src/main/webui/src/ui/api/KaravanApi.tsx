@@ -409,6 +409,11 @@ export class KaravanApi {
     }
 
     static async getProjectCamelStatuses(projectId: string, env: string, after: (res: AxiosResponse<CamelStatus[]>) => void) {
+        // Pollers can fire before the project/env are selected — skip instead of
+        // requesting /ui/project/status/camel/undefined/ (repeated 404s).
+        if (!projectId || !env) {
+            return;
+        }
         instance.get('/ui/project/status/camel/' + projectId + "/" + env)
             .then(res => {
                 after(res);
@@ -457,16 +462,6 @@ export class KaravanApi {
         });
     }
 
-    static async getContainerLog(environment: string, name: string, after: (res: AxiosResponse<string>) => void) {
-        instance.get('/ui/container/log/' + environment + "/" + name)
-            .then(res => {
-                if (res.status === 200) {
-                    after(res.data);
-                }
-            }).catch(err => {
-            ErrorEventBus.sendApiError(err);
-        });
-    }
 
     static async getAllServiceStatuses(after: (statuses: ServiceStatus[]) => void) {
         instance.get('/ui/infrastructure/service')

@@ -1,4 +1,3 @@
-import React from 'react';
 import {PodEventsLogTable} from "@features/project/project-pod/PodEventsLogTable";
 import {Content, Divider} from "@patternfly/react-core";
 import {ProjectContainerContextToolbar} from "@features/project/ProjectContainerContextToolbar";

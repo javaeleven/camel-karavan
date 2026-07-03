@@ -106,4 +106,6 @@ deploy/helm/karavan/values-auth0.yaml
 logs.txt
 
 # agentic
-ai_docs/
+ai_docs/postgres-data/
+# local dev database (deploy/compose.yaml bind mount)
+deploy/postgres-data/

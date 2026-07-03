@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Tbody, Td, Tr} from '@patternfly/react-table';
 import {ProjectFolderCommit} from "@stores/CommitsStore";
 import TimeAgo from "javascript-time-ago";

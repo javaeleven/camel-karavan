@@ -18,39 +18,30 @@ package org.apache.camel.karavan.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
 import org.apache.camel.karavan.model.RegistryConfig;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
-import java.util.Optional;
-
+@Slf4j
 @ApplicationScoped
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class RegistryService {
 
-    private static final Logger LOGGER = Logger.getLogger(RegistryService.class.getName());
+    private final KaravanConfig config;
 
-    @ConfigProperty(name = "karavan.container-image.registry")
-    String registry;
-    @ConfigProperty(name = "karavan.container-image.group")
-    String group;
-    @ConfigProperty(name = "karavan.container-image.registry-username")
-    Optional<String> username;
-    @ConfigProperty(name = "karavan.container-image.registry-password")
-    Optional<String> password;
-
-    @Inject
-    KubernetesService kubernetesService;
+    private final KubernetesService kubernetesService;
 
     public RegistryConfig getRegistryConfig() {
-        String registryUrl = registry;
-        String imageGroup = group;
-        String registryUsername = username.orElse(null);
-        String registryPassword = password.orElse(null);
+        String registryUrl = config.containerImage().registry();
+        String imageGroup = config.containerImage().group();
+        String registryUsername = config.containerImage().registryUsername().orElse(null);
+        String registryPassword = config.containerImage().registryPassword().orElse(null);
         if (ConfigService.inKubernetes()) {
             registryUrl = kubernetesService.getKaravanSecret("image-registry");
             String i = kubernetesService.getKaravanSecret("image-group");
-            imageGroup = i != null ? i : group;
+            imageGroup = i != null ? i : config.containerImage().group();
             registryUsername = kubernetesService.getKaravanSecret("image-registry-username");
             registryPassword = kubernetesService.getKaravanSecret("image-registry-password");
         }
@@ -58,10 +49,10 @@ public class RegistryService {
     }
 
     public String getRegistryWithGroupForSync() {
-        String registryUrl = registry;
+        String registryUrl = config.containerImage().registry();
         if (!ConfigService.inKubernetes() && registryUrl.equalsIgnoreCase("registry:5000")) {
             registryUrl = "localhost:5555";
         }
-        return registryUrl + "/" + group;
+        return registryUrl + "/" + config.containerImage().group();
     }
 }

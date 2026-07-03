@@ -37,7 +37,6 @@ export function App() {
                 // mode) returns the user here instead of the dashboard.
                 rememberPostLoginRedirect(window.location.pathname + window.location.search);
                 navigate(ROUTES.LOGIN);
-                if (AuthApi.authType === 'session') window.location.reload();
             }
         });
         return () => {

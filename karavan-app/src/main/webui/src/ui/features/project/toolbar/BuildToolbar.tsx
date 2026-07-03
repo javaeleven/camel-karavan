@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Button, Content, Label, Modal, ModalBody, ModalFooter, ModalHeader, Tooltip} from '@patternfly/react-core';
 import {KaravanApi} from "@api/KaravanApi";
 import BuildIcon from "@patternfly/react-icons/dist/esm/icons/build-icon";
@@ -67,7 +67,7 @@ export function BuildToolbar() {
     }
 
     function buildButton() {
-        const status = containers.filter(c => c.projectId === project.projectId && c.type === 'build').at(0);
+        const status = containers.find(c => c.projectId === project.projectId && c.type === 'build');
         const isRunning = status?.state === 'running';
         const buildName = getBuildName();
         return (
@@ -109,7 +109,7 @@ export function BuildToolbar() {
     }
 
     function getContainerStatus() {
-        return containers.filter(c => c.projectId === project.projectId && c.type === 'build').at(0);
+        return containers.find(c => c.projectId === project.projectId && c.type === 'build');
     }
 
     function getBuildName() {
@@ -142,7 +142,7 @@ export function BuildToolbar() {
     }
 
     function getBuildTag() {
-        const status = containers.filter(c => c.projectId === project.projectId && c.type === 'build').at(0);
+        const status = containers.find(c => c.projectId === project.projectId && c.type === 'build');
         const state = status?.state;
         const isRunning = state === 'running';
         const isExited = state === 'exited';

@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {capitalize, Content, Nav, NavItem, NavList} from '@patternfly/react-core';
 import {DashboardToolbar} from "./DashboardToolbar";
 import {RightPanel} from "@shared/ui/RightPanel";

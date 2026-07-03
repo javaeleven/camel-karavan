@@ -15,7 +15,6 @@
  * limitations under the License.
  */
 
-import React from 'react';
 import {Button, Content, ContentVariants, HelperText, HelperTextItem, Modal, ModalBody, ModalFooter, ModalHeader, ModalVariant} from '@patternfly/react-core';
 import '@features/project/designer/karavan.css';
 import {useFileStore} from "@stores/ProjectStore";

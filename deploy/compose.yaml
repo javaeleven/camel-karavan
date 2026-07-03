@@ -1,0 +1,73 @@
+name: karavan
+
+# Local dev dependencies for `make dev` (Quarkus dev mode on the host):
+#   - postgres  : app database           -> localhost:5432
+#   - registry  : project/devmode images -> localhost:5555 (in-network: registry:5000)
+# Defaults match karavan.datasource.* in application.properties; override via .env.
+
+services:
+
+  postgres:
+    image: postgres:18.4
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${KARAVAN_DATASOURCE_USERNAME:-karavan}
+      POSTGRES_PASSWORD: ${KARAVAN_DATASOURCE_PASSWORD:-K@r@v@n418}
+      POSTGRES_DB: karavan
+    ports:
+      - "5432:5432"
+    networks:
+      - karavan
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KARAVAN_DATASOURCE_USERNAME:-karavan} -d karavan"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      # Postgres 18+ images store data in a major-version subdirectory, so the
+      # mount must be the parent dir (/var/lib/postgresql), not /.../data.
+      - ./postgres-data:/var/lib/postgresql
+
+  # Local IdP so the SSO-only login works in dev: realm "karavan" with client
+  # backend/karavan and users admin/karavan + developer/karavan (roles included).
+  # Matches the karavan.keycloak.* defaults in application.properties (port 8079).
+  keycloak:
+    container_name: keycloak
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8079:8080"
+    networks:
+      - karavan
+    volumes:
+      - ./keycloak/karavan-realm.json:/opt/keycloak/data/import/karavan-realm.json:ro
+    healthcheck:
+      # health endpoint lives on the management port (9000) in KC 26
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\n\\r' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  registry:
+    container_name: registry
+    image: registry:3
+    restart: always
+    ports:
+      - "5555:5000" # host localhost:5555 -> registry:5000 (inside the karavan network)
+    labels:
+      - "org.apache.camel.karavan/type=internal"
+    networks:
+      - karavan
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:5000/v2/ || exit 1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+networks:
+  karavan:
+    name: karavan

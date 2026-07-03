@@ -31,7 +31,7 @@ export function useTopologyHook(setConfirmationProps?: React.Dispatch<React.SetS
     const [setTabIndex, project] = useProjectStore((s) => [s.setTabIndex, s.project], shallow);
 
     function selectFile(fileName: string) {
-        const file = files.filter(f => f.name === fileName)?.at(0);
+        const file = files.find(f => f.name === fileName);
         if (file) {
             setFile('select', file);
             setTabIndex(0);
@@ -40,7 +40,7 @@ export function useTopologyHook(setConfirmationProps?: React.Dispatch<React.SetS
 
     function setDisabled(fileName: string, elementId: string, enable: boolean) {
         try {
-            const file = files.filter(f => f.name === fileName)?.at(0);
+            const file = files.find(f => f.name === fileName);
             if (file) {
                 const integration = CamelDefinitionYaml.yamlToIntegration(file.name, file?.code);
                 const element = CamelDefinitionApiExt.findElementById(integration, elementId);
@@ -63,7 +63,7 @@ export function useTopologyHook(setConfirmationProps?: React.Dispatch<React.SetS
 
     function deleteRoute(fileName: string, routeId: string) {
         try {
-            const file = files.filter(f => f.name === fileName)?.at(0);
+            const file = files.find(f => f.name === fileName);
             if (file) {
                 const integration = CamelDefinitionYaml.yamlToIntegration(file.name, file?.code);
                 const newIntegration = CamelDefinitionApiExt.deleteRouteFromIntegration(integration, routeId);
@@ -103,7 +103,7 @@ export function useTopologyHook(setConfirmationProps?: React.Dispatch<React.SetS
 
     function setRouteGroup (fileName: string, elementId: string, groupName: string) {
         try {
-            const file = files.filter(f => f.name === fileName)?.at(0);
+            const file = files.find(f => f.name === fileName);
             if (file) {
                 const integration = CamelDefinitionYaml.yamlToIntegration(file.name, file?.code);
                 const element = CamelDefinitionApiExt.findElementById(integration, elementId);

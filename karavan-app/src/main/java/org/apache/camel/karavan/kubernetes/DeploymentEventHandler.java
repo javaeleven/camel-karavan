@@ -21,17 +21,17 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.client.informers.ResourceEventHandler;
 import io.vertx.core.json.JsonObject;
 import io.vertx.mutiny.core.eventbus.EventBus;
-import org.apache.camel.karavan.cache.ContainerType;
-import org.apache.camel.karavan.cache.DeploymentStatus;
-import org.jboss.logging.Logger;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.model.ContainerType;
+import org.apache.camel.karavan.model.DeploymentStatus;
 
 import static org.apache.camel.karavan.KaravanConstants.LABEL_TYPE;
 import static org.apache.camel.karavan.KaravanEvents.DEPLOYMENT_DELETED;
 import static org.apache.camel.karavan.KaravanEvents.DEPLOYMENT_UPDATED;
 
+@Slf4j
 public class DeploymentEventHandler implements ResourceEventHandler<Deployment> {
 
-    private static final Logger LOGGER = Logger.getLogger(DeploymentEventHandler.class.getName());
     private final KubernetesStatusService kubernetesStatusService;
     private final EventBus eventBus;
 
@@ -43,37 +43,37 @@ public class DeploymentEventHandler implements ResourceEventHandler<Deployment> 
     @Override
     public void onAdd(Deployment deployment) {
         try {
-            LOGGER.info("onAdd " + deployment.getMetadata().getName());
+            log.info("onAdd " + deployment.getMetadata().getName());
             DeploymentStatus ds = getDeploymentStatus(deployment);
             eventBus.publish(DEPLOYMENT_UPDATED, JsonObject.mapFrom(ds));
-        } catch (Exception e){
-            LOGGER.error(e.getMessage());
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 
     @Override
     public void onUpdate(Deployment oldDeployment, Deployment newDeployment) {
         try {
-            LOGGER.info("onUpdate " + newDeployment.getMetadata().getName());
+            log.info("onUpdate " + newDeployment.getMetadata().getName());
             DeploymentStatus ds = getDeploymentStatus(newDeployment);
             eventBus.publish(DEPLOYMENT_UPDATED, JsonObject.mapFrom(ds));
-        } catch (Exception e){
-            LOGGER.error(e.getMessage());
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 
     @Override
     public void onDelete(Deployment deployment, boolean deletedFinalStateUnknown) {
         try {
-            LOGGER.info("onDelete " + deployment.getMetadata().getName());
+            log.info("onDelete " + deployment.getMetadata().getName());
             DeploymentStatus ds = new DeploymentStatus(
                     deployment.getMetadata().getName(),
                     deployment.getMetadata().getNamespace(),
                     kubernetesStatusService.getCluster(),
                     kubernetesStatusService.getEnvironment());
             eventBus.publish(DEPLOYMENT_DELETED, JsonObject.mapFrom(ds));
-        } catch (Exception e){
-            LOGGER.error(e.getMessage());
+        } catch (Exception e) {
+            log.error(e.getMessage());
         }
     }
 
@@ -97,7 +97,7 @@ public class DeploymentEventHandler implements ResourceEventHandler<Deployment> 
                     type
             );
         } catch (Exception ex) {
-            LOGGER.error(ex.getMessage());
+            log.error(ex.getMessage());
             return new DeploymentStatus(
                     deployment.getMetadata().getName(),
                     deployment.getMetadata().getNamespace(),

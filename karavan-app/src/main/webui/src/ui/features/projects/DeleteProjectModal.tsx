@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Content, ContentVariants, HelperText, HelperTextItem, Switch} from '@patternfly/react-core';
 import {useProjectStore} from "@stores/ProjectStore";
 import {ProjectService} from "@services/ProjectService";

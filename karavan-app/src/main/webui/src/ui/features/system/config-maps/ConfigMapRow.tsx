@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Badge, Button, Label} from '@patternfly/react-core';
 import {Tbody, Td, Tr} from '@patternfly/react-table';
 import {useSystemStore} from "@stores/SystemStore";
@@ -24,7 +24,7 @@ export function ConfigMapRow(props: Props) {
     const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
 
     function getConfigMapData(configmapName: string): [string, string][] {
-        const configMap = configmaps.filter(s => s.name === configmapName).at(0);
+        const configMap = configmaps.find(s => s.name === configmapName);
         return Object.getOwnPropertyNames(configMap?.data)
             .sort((a, b) => a.localeCompare(b)).map(key => [key, configMap?.data?.[key]]);
     }

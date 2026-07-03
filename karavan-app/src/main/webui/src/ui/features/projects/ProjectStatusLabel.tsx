@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {ReactElement} from 'react';
+import {ReactElement} from 'react';
 import {ContainerType} from '@models/ProjectModels';
 import {BuildIcon, CogIcon, CubesIcon, DevIcon, InProgressIcon, LockIcon, PackageIcon} from '@patternfly/react-icons';
 import {Label} from "@patternfly/react-core";
@@ -32,10 +32,10 @@ export function ProjectStatusLabel(props: Props) {
     const {projectId} = props;
     const [deployments] = useStatusesStore((state) => [state.deployments], shallow)
     const {containers} = useContainerStatusesStore();
-    const camelContainer = containers.filter(c => c.projectId === projectId && ['devmode', 'packaged'].includes(c.type)).at(0);
+    const camelContainer = containers.find(c => c.projectId === projectId && ['devmode', 'packaged'].includes(c.type));
     const isCamelRunning = camelContainer && camelContainer?.state === 'running';
 
-    const buildContainer = containers.filter(c => c.projectId === projectId && ['build'].includes(c.type)).at(0);
+    const buildContainer = containers.find(c => c.projectId === projectId && ['build'].includes(c.type));
     const isBuildRunning = buildContainer && buildContainer?.state === 'running';
     const hasContainers = containers.filter(c => c.projectId === projectId).length > 0;
     const isRunning = containers.filter(c => c.projectId === projectId && c.state === 'running').length > 0;

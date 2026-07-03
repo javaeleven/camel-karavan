@@ -18,9 +18,14 @@
 package org.apache.camel.karavan.model;
 
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.List;
 import java.util.Map;
 
+@Getter
+@Setter
 public class DockerNetworkDefinition {
 
     private String driver;
@@ -28,46 +33,4 @@ public class DockerNetworkDefinition {
     private Boolean attachable; // Useful for Swarm
     private Map<String, String> driver_opts;
     private List<String> labels;
-
-    // --- Getters and Setters ---
-
-    public String getDriver() {
-        return driver;
-    }
-
-    public void setDriver(String driver) {
-        this.driver = driver;
-    }
-
-    public Boolean getExternal() {
-        return external;
-    }
-
-    public void setExternal(Boolean external) {
-        this.external = external;
-    }
-
-    public Boolean getAttachable() {
-        return attachable;
-    }
-
-    public void setAttachable(Boolean attachable) {
-        this.attachable = attachable;
-    }
-
-    public Map<String, String> getDriver_opts() {
-        return driver_opts;
-    }
-
-    public void setDriver_opts(Map<String, String> driver_opts) {
-        this.driver_opts = driver_opts;
-    }
-
-    public List<String> getLabels() {
-        return labels;
-    }
-
-    public void setLabels(List<String> labels) {
-        this.labels = labels;
-    }
 }

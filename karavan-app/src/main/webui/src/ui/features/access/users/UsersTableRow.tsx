@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import {useState} from 'react';
 import {Button, capitalize, Label, Switch} from '@patternfly/react-core';
 import {Tbody, Td, Tr} from "@patternfly/react-table";
 import {AccessUser} from "@models/AccessModels";
@@ -8,7 +8,7 @@ import {AccessApi} from "@api/AccessApi";
 import DeleteIcon from "@patternfly/react-icons/dist/esm/icons/times-icon";
 import {AccessService} from "@services/AccessService";
 import {ModalConfirmation} from "@shared/ui/ModalConfirmation";
-import {PauseIcon, PlayIcon, UserSecretIcon} from "@patternfly/react-icons";
+import {PauseIcon, PlayIcon} from "@patternfly/react-icons";
 
 interface Props {
     index: number
@@ -17,7 +17,7 @@ interface Props {
 
 export function UsersTableRow(props: Props) {
 
-    const [setShowUserModal, setCurrentUser, roles, setShowPasswordModal] = useAccessStore((s) => [s.setShowUserModal, s.setCurrentUser, s.roles, s.setShowPasswordModal], shallow);
+    const [setShowUserModal, setCurrentUser, roles] = useAccessStore((s) => [s.setShowUserModal, s.setCurrentUser, s.roles], shallow);
     const [showConfirmation, setShowConfirmation] = useState<boolean>(false);
     const [command, setCommand] = useState<'activate' | 'inactivate' | 'delete' | 'add' | 'remove'>();
     const [role, setRole] = useState<string>();
@@ -35,7 +35,7 @@ export function UsersTableRow(props: Props) {
                 AccessService.refreshAccess();
             });
         } else if (command && ['add', 'remove'].includes(command)) {
-            AccessApi.setUserRole(user, role, command, result => {
+            AccessApi.setUserRole(user, role, command as 'add' | 'remove', result => {
                 AccessService.refreshAccess();
             });
         }
@@ -156,15 +156,6 @@ export function UsersTableRow(props: Props) {
                                 onClick={() => {
                                     setCommand('delete')
                                     setShowConfirmation(true);
-                                }}/>
-                        <Button className="dev-action-button"
-                                isDisabled={notDeletable}
-                                variant={"plain"}
-                                icon={<UserSecretIcon color={notDeletable ? 'var(--pf-t--global--icon--color--disabled)' : 'var(--pf-t--global--icon--color--status--danger--default)'}/>}
-                                style={{padding: '6px', marginLeft: '6px'}}
-                                onClick={() => {
-                                    setCurrentUser(user)
-                                    setShowPasswordModal(true);
                                 }}/>
                     </div>
                 </Td>

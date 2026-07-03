@@ -22,6 +22,11 @@ git clone --depth 1 --branch $GIT_BRANCH $GIT_REPOSITORY $CODE_DIR
 
 cd $CODE_DIR/$PROJECT_ID
 
+# Per-project Camel version (camel.jbang.camelVersion in application.properties) wins
+# over the devmode image default, so each project can build on its own Camel version.
+PROJECT_CAMEL_VERSION=$(grep -E "^camel.jbang.camelVersion=" application.properties 2>/dev/null | head -1 | cut -d= -f2)
+CAMEL_VERSION=${PROJECT_CAMEL_VERSION:-$CAMEL_VERSION}
+
 # Build the project image for the cluster's node architecture. The build pod runs
 # on the same node pool as the workloads, so `uname -m` is the target arch. Without
 # this jib defaults to linux/amd64 and the image fails on arm64 (Graviton) nodes

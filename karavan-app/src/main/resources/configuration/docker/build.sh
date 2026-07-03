@@ -18,6 +18,11 @@ git clone --depth 1 --branch $GIT_BRANCH $GIT_REPOSITORY $CODE_DIR
 
 cd $CODE_DIR/$PROJECT_ID
 
+# Per-project Camel version (camel.jbang.camelVersion in application.properties) wins
+# over the devmode image default, so each project can build on its own Camel version.
+PROJECT_CAMEL_VERSION=$(grep -E "^camel.jbang.camelVersion=" application.properties 2>/dev/null | head -1 | cut -d= -f2)
+CAMEL_VERSION=${PROJECT_CAMEL_VERSION:-$CAMEL_VERSION}
+
 # Build for the host architecture so the image runs where it's deployed (jib
 # defaults to linux/amd64 -> "exec format error" on arm64 hosts).
 case "$(uname -m)" in

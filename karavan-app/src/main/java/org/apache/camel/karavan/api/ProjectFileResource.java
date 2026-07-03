@@ -18,13 +18,12 @@ package org.apache.camel.karavan.api;
 
 import io.quarkus.security.Authenticated;
 import io.vertx.core.json.JsonObject;
-import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.cache.KaravanCache;
-import org.apache.camel.karavan.cache.ProjectFile;
-import org.apache.camel.karavan.cache.ProjectFileCommited;
+import org.apache.camel.karavan.model.ProjectFile;
+import org.apache.camel.karavan.model.ProjectFileCommited;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -33,10 +32,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Path("/ui/file")
-public class ProjectFileResource {
-
-    @Inject
-    KaravanCache karavanCache;
+public class ProjectFileResource extends AbstractApiResource {
 
     @GET
     @Authenticated
@@ -94,7 +90,7 @@ public class ProjectFileResource {
         files.forEach(pf -> {
             var pfc = filesCommited.stream().filter(f -> Objects.equals(f.getName(), pf.getName())).findFirst();
             if (pfc.isPresent()) {
-                if (!Objects.equals(pfc.get().getCode(), pf.getCode())){
+                if (!Objects.equals(pfc.get().getCode(), pf.getCode())) {
                     result.put(pf.getName(), "CHANGED");
                 }
             } else {
@@ -114,7 +110,8 @@ public class ProjectFileResource {
     @Authenticated
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response create(ProjectFile file) throws Exception {
+    public Response create(@Valid ProjectFile file) throws Exception {
+        requireProjectWriteAccess(file.getProjectId());
         file.setLastUpdate(Instant.now().getEpochSecond() * 1000L);
         boolean projectFileExists = karavanCache.getProjectFile(file.getProjectId(), file.getName()) != null;
         if (projectFileExists) {
@@ -129,7 +126,8 @@ public class ProjectFileResource {
     @Authenticated
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    public ProjectFile update(ProjectFile file) throws Exception {
+    public ProjectFile update(@Valid ProjectFile file) throws Exception {
+        requireProjectWriteAccess(file.getProjectId());
         file.setLastUpdate(Instant.now().getEpochSecond() * 1000L);
         karavanCache.saveProjectFile(file, null, true);
         return file;
@@ -143,6 +141,7 @@ public class ProjectFileResource {
     public Response rename(@PathParam("projectId") String projectId,
                            @PathParam("filename") String filename,
                            JsonObject copy) throws Exception {
+        requireProjectWriteAccess(projectId);
         try {
             var newName = copy.getString("newName");
             var fromFile = karavanCache.getProjectFile(projectId, filename);
@@ -172,6 +171,7 @@ public class ProjectFileResource {
     @Path("/{project}/{filename}")
     public void delete(@PathParam("project") String project,
                        @PathParam("filename") String filename) throws Exception {
+        requireProjectWriteAccess(URLDecoder.decode(project, StandardCharsets.UTF_8));
         karavanCache.deleteProjectFile(
                 URLDecoder.decode(project, StandardCharsets.UTF_8),
                 URLDecoder.decode(filename, StandardCharsets.UTF_8)
@@ -186,6 +186,7 @@ public class ProjectFileResource {
         var fromProjectId = copy.getString("fromProjectId");
         var fromFilename = copy.getString("fromFilename");
         var toProjectId = copy.getString("toProjectId");
+        requireProjectWriteAccess(toProjectId);
         var toFilename = copy.getString("toFilename");
         var overwrite = copy.getBoolean("overwrite", false);
         var tofile = karavanCache.getProjectFile(toProjectId, toFilename);

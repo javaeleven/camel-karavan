@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import {useEffect} from 'react';
 import {Bullseye, EmptyState, EmptyStateBody, EmptyStateVariant, Spinner,} from '@patternfly/react-core';
 import {InnerScrollContainer, OuterScrollContainer, Table, Tbody, Td, Th, Thead, Tr} from '@patternfly/react-table';
 import {shallow} from "zustand/shallow";

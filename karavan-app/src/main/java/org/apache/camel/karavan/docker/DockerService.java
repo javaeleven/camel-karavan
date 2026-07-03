@@ -1,12 +1,12 @@
 package org.apache.camel.karavan.docker;
 
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.api.command.*;
 import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.core.DockerClientImpl;
-import com.github.dockerjava.api.async.ResultCallback;
 import com.github.dockerjava.httpclient5.ApacheDockerHttpClient;
 import com.github.dockerjava.transport.DockerHttpClient;
 import io.quarkus.cache.CacheResult;
@@ -19,8 +19,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
-import org.apache.camel.karavan.cache.ContainerType;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.camel.karavan.config.KaravanConfig;
 import org.apache.camel.karavan.model.ContainerImage;
+import org.apache.camel.karavan.model.ContainerType;
 import org.apache.camel.karavan.model.DockerComposeService;
 import org.apache.camel.karavan.model.DockerVolumeDefinition;
 import org.apache.camel.karavan.service.CodeService;
@@ -29,9 +32,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.math.NumberUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.Readiness;
-import org.jboss.logging.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -46,51 +47,29 @@ import static org.apache.camel.karavan.KaravanConstants.*;
 @Default
 @Readiness
 @ApplicationScoped
+@Slf4j
+@RequiredArgsConstructor(onConstructor_ = {@Inject})
 public class DockerService {
+
+    private static Boolean IN_SWARM_MODE = null;
+    private final KaravanConfig config;
+    private final DockerEventHandler dockerEventHandler;
+    private final CodeService codeService;
+    private final Vertx vertx;
+    private volatile DockerClient dockerClient;
+    private volatile DockerClient dockerClientConnectedToRegistry;
 
     @CacheResult(cacheName = "docker-check")
     public boolean checkDocker() {
-        LOGGER.debug("Checking Docker");
+        log.debug("Checking Docker");
         try {
             getDockerClient().infoCmd().exec();
             return true;
         } catch (Exception e) {
-            LOGGER.error("Error connecting Docker: " + e.getMessage());
+            log.error("Error connecting Docker: " + e.getMessage());
             return false;
         }
     }
-
-    public enum PULL_IMAGE {
-        always, ifNotExists, never
-    }
-
-    private static final Logger LOGGER = Logger.getLogger(DockerService.class.getName());
-
-    @ConfigProperty(name = "karavan.docker.network")
-    String networkName;
-
-    @ConfigProperty(name = "karavan.container-image.registry")
-    String registry;
-    @ConfigProperty(name = "karavan.container-image.group")
-    String group;
-    @ConfigProperty(name = "karavan.container-image.registry-username")
-    Optional<String> username;
-    @ConfigProperty(name = "karavan.container-image.registry-password")
-    Optional<String> password;
-
-    @Inject
-    DockerEventHandler dockerEventHandler;
-
-    @Inject
-    CodeService codeService;
-
-    @Inject
-    Vertx vertx;
-
-    private volatile DockerClient dockerClient;
-    private volatile DockerClient dockerClientConnectedToRegistry;
-
-    private static Boolean IN_SWARM_MODE = null;
 
     public boolean isInSwarmMode() {
         if (IN_SWARM_MODE == null) {
@@ -113,19 +92,19 @@ public class DockerService {
             try {
                 dockerEventHandler.close();
             } catch (Exception e) {
-                LOGGER.warn("Error closing DockerEventHandler", e);
+                log.warn("Error closing DockerEventHandler", e);
             }
             shutdownClients();
         }
     }
 
     private synchronized void shutdownClients() {
-        LOGGER.info("Shutting down DockerClient");
+        log.info("Shutting down DockerClient");
         if (dockerClient != null) {
             try {
                 dockerClient.close();
             } catch (IOException e) {
-                LOGGER.warn("Error closing DockerClient", e);
+                log.warn("Error closing DockerClient", e);
             } finally {
                 dockerClient = null;
             }
@@ -134,7 +113,7 @@ public class DockerService {
             try {
                 dockerClientConnectedToRegistry.close();
             } catch (IOException e) {
-                LOGGER.warn("Error closing DockerClientConnectedToRegistry", e);
+                log.warn("Error closing DockerClientConnectedToRegistry", e);
             } finally {
                 dockerClientConnectedToRegistry = null;
             }
@@ -148,7 +127,7 @@ public class DockerService {
             var nodes = (swarmInfo != null && swarmInfo.getNodes() != null) ? swarmInfo.getNodes() : 0;
             return swarmInfo != null && nodes > 0;
         } catch (Exception e) {
-            LOGGER.error("Error connecting Docker: " + e.getMessage());
+            log.error("Error connecting Docker: " + e.getMessage());
             return false;
         }
     }
@@ -167,7 +146,7 @@ public class DockerService {
                 );
             }
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
         }
         return JsonObject.of("Nodes", 0, "Error", "Swarm or Info is unavailable");
     }
@@ -212,7 +191,7 @@ public class DockerService {
             }
 
             return createContainer(compose.getContainer_name(), compose.getImage(),
-                    env, compose.getPortsMap(), healthCheck, labels, compose.getVolumes(), networkName, restartPolicy, pullImage,
+                    env, compose.getPortsMap(), healthCheck, labels, compose.getVolumes(), config.docker().network(), restartPolicy, pullImage,
                     compose.getCpus(), compose.getCpu_percent(), compose.getMem_limit(), compose.getMem_reservation(), compose.getCommand());
         } else {
             return containers.getFirst();
@@ -279,7 +258,7 @@ public class DockerService {
                 .withRestartPolicy(restartPolicy).withPortBindings(portBindings).withMounts(mounts)
                 .withMemory(DockerUtils.parseMemory(mem_limit)).withMemoryReservation(DockerUtils.parseMemory(mem_reservation))
                 .withCpuPercent(NumberUtils.toLong(cpu_percent)).withNanoCPUs(NumberUtils.toLong(cpus))
-                .withNetworkMode(network != null ? network : networkName));
+                .withNetworkMode(network != null ? network : config.docker().network()));
 
         CreateContainerResponse response = createContainerCmd.exec();
         return getContainer(response.getId());
@@ -318,7 +297,7 @@ public class DockerService {
                     .withTarInputStream(new ByteArrayInputStream(byteArrayOutputStream.toByteArray()))
                     .withRemotePath(containerPath).exec();
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            log.error(e.getMessage());
             e.printStackTrace();
         }
     }
@@ -332,7 +311,6 @@ public class DockerService {
             }
         }
     }
-
 
     public void runContainer(String name) {
         Container container = getContainerByName(name);
@@ -349,7 +327,7 @@ public class DockerService {
                 callback.awaitCompletion();
             }
         } catch (Exception e) {
-            LOGGER.error("Logging error: " + e.getMessage());
+            log.error("Logging error: " + e.getMessage());
         }
     }
 
@@ -405,11 +383,10 @@ public class DockerService {
         }
     }
 
-
     public void pullImage(String image, boolean pullAlways) throws InterruptedException {
         List<Image> images = getDockerClient().listImagesCmd().withShowAll(true).exec();
         if (pullAlways || images.stream().noneMatch(i -> Arrays.asList(i.getRepoTags()).contains(image))) {
-            var callback = new DockerPullCallback(LOGGER::info);
+            var callback = new DockerPullCallback(log::info);
             getDockerClient().pullImageCmd(image).exec(callback);
             callback.awaitCompletion();
         }
@@ -418,16 +395,17 @@ public class DockerService {
     public void pullImageFromDockerHub(String image, boolean pullAlways) throws InterruptedException {
         List<Image> images = getDockerClientNotConnectedToRegistry().listImagesCmd().withShowAll(true).exec();
         if (pullAlways || images.stream().noneMatch(i -> Arrays.asList(i.getRepoTags()).contains(image))) {
-            var callback = new DockerPullCallback(LOGGER::info);
+            var callback = new DockerPullCallback(log::info);
             getDockerClientNotConnectedToRegistry().pullImageCmd(image).exec(callback);
             callback.awaitCompletion();
         }
     }
 
     public void pullImagesForProject(String projectId) throws InterruptedException {
-        if (!Objects.equals(registry, "registry:5000") && username.isPresent() && password.isPresent()) {
-            var repository = registry + "/" + group + "/" + projectId;
-            var callback = new DockerPullCallback(LOGGER::info);
+        var registry = config.containerImage().registry();
+        if (!Objects.equals(registry, "registry:5000") && config.containerImage().registryUsername().isPresent() && config.containerImage().registryPassword().isPresent()) {
+            var repository = registry + "/" + config.containerImage().group() + "/" + projectId;
+            var callback = new DockerPullCallback(log::info);
             getDockerClient().pullImageCmd(repository).exec(callback);
             callback.awaitCompletion().onError(new Throwable("Error pulling images"));
         }
@@ -435,6 +413,9 @@ public class DockerService {
 
     private DockerClientConfig getDockerClientConfig(boolean connectedToRegistry) {
         DefaultDockerClientConfig.Builder builder = DefaultDockerClientConfig.createDefaultConfigBuilder();
+        var registry = config.containerImage().registry();
+        var username = config.containerImage().registryUsername();
+        var password = config.containerImage().registryPassword();
         if (connectedToRegistry && !Objects.equals(registry, "registry:5000") && username.isPresent() && password.isPresent()) {
             builder.withRegistryUrl(registry).withRegistryUsername(username.get()).withRegistryPassword(password.get());
         }
@@ -457,7 +438,7 @@ public class DockerService {
                 dockerClient.pingCmd().exec();
             }
         } catch (Exception e) {
-            LOGGER.error("Primary Docker client dead, resetting connection pool: " + e.getMessage());
+            log.error("Primary Docker client dead, resetting connection pool: " + e.getMessage());
             shutdownClients(); // Close the broken pool
         }
 
@@ -493,5 +474,9 @@ public class DockerService {
 
     public void createConfig(String name, String config) {
         getDockerClient().createConfigCmd().withName(name).withData(config.getBytes()).exec();
+    }
+
+    public enum PULL_IMAGE {
+        always, ifNotExists, never
     }
 }

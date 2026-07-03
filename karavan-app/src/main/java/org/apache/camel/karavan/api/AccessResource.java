@@ -1,14 +1,15 @@
 package org.apache.camel.karavan.api;
 
-import io.vertx.core.json.JsonObject;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.apache.camel.karavan.cache.AccessRole;
-import org.apache.camel.karavan.cache.AccessUser;
+import org.apache.camel.karavan.api.dto.UserRoleChangeRequest;
 import org.apache.camel.karavan.cache.KaravanCache;
+import org.apache.camel.karavan.model.AccessRole;
+import org.apache.camel.karavan.model.AccessUser;
 import org.apache.camel.karavan.service.AuthService;
 
 import java.util.ArrayList;
@@ -71,7 +72,7 @@ public class AccessResource extends AbstractApiResource {
             user.setRoles(currentUser.getRoles());
             karavanCache.saveUser(user, true);
             return Response.ok().entity(user).build();
-        } else  {
+        } else {
             return Response.status(Response.Status.FORBIDDEN).build();
         }
     }
@@ -80,10 +81,10 @@ public class AccessResource extends AbstractApiResource {
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed({ROLE_ADMIN})
     @Path("/userRole")
-    public Response changeUserRole(JsonObject message) {
-        var username = message.getString("username");
-        var role = message.getString("role");
-        var command = message.getString("command");
+    public Response changeUserRole(@Valid UserRoleChangeRequest message) {
+        var username = message.getUsername();
+        var role = message.getRole();
+        var command = message.getCommand();
         var currentUser = karavanCache.getUser(username);
         List<String> roles = new ArrayList<>(currentUser.getRoles());
         if (Objects.equals(command, "add")) {
@@ -137,24 +138,6 @@ public class AccessResource extends AbstractApiResource {
             return Response.notModified().build();
         } catch (Exception e) {
             return Response.notModified().build();
-        }
-    }
-
-    @POST
-    @Path("/password")
-    @RolesAllowed({ROLE_ADMIN})
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response changePassword(JsonObject body) throws Exception {
-        try {
-            final var adminUsername = getIdentity().getString("username");
-            final var currentPassword = body.getString("currentPassword");
-            final var username = body.getString("username");
-            final var password = body.getString("password");
-            authService.login(adminUsername, currentPassword);
-            authService.changePassword(username, password, true);
-            return Response.noContent().build();
-        } catch (Exception e) {
-            return Response.status(Response.Status.FORBIDDEN).entity(e.getMessage()).build();
         }
     }
 }

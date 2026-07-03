@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import {useEffect} from 'react';
 import {ProjectFile} from "@models/ProjectModels";
 import {FilesToolbar} from "@features/project/files/FilesToolbar";
 import {FilesSubTab} from "@features/project/files/FilesSubTab";

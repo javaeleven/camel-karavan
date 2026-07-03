@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-import React, {useEffect, useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Bullseye, EmptyState, EmptyStateVariant, Spinner,} from '@patternfly/react-core';
 import '@features/project/designer/karavan.css';
 import './ContainerPage.css';

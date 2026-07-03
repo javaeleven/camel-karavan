@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, {JSX, useEffect, useState} from 'react';
+import {JSX, useEffect, useState} from 'react';
 import './ProjectPage.css';
 import {shallow} from "zustand/shallow";
 import {useNavigate, useParams} from "react-router-dom";
@@ -86,7 +86,7 @@ export function ProjectPage(props: ProjectPageProps): JSX.Element {
     useEffect(() => {
         if (urlFileName !== undefined) {
             const file = files
-                .filter(f => f.projectId === projectId && f.name === urlFileName)?.at(0);
+                .find(f => f.projectId === projectId && f.name === urlFileName);
             if (file) {
                 setFile('select', file);
                 setTabIndex('architecture');

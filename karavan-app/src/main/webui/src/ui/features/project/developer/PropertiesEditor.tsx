@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import './PropertiesEditor.css';
 import '@shared/monaco-setup';
 import {Range} from '@shared/monaco-setup';
