@@ -121,10 +121,19 @@ case "${CAMEL_RUNTIME}" in
     # EXPLODED makes it use the raw target/classes (-> /app/classes) + flat deps
     # (-> /app/libs); the entrypoint then resolves the main class. jkube (already in the
     # generated pom) applies the k8s manifests.
-    mvn package jib:build k8s:resource k8s:apply \
+    # Invoke jib + jkube by FULL COORDINATES: Camel 4.18 exports no longer add
+    # the jib/jkube plugins to the generated pom, so bare prefixes (jib:build,
+    # k8s:apply) fail with NoPluginFoundForPrefixException.
+    mvn package \
+      com.google.cloud.tools:jib-maven-plugin:${JIB_VERSION}:build \
+      org.eclipse.jkube:kubernetes-maven-plugin:${JKUBE_VERSION}:resource \
+      org.eclipse.jkube:kubernetes-maven-plugin:${JKUBE_VERSION}:apply \
+      -DskipTests \
       -Djib.containerizingMode=exploded \
       -Djkube.namespace=${NAMESPACE} \
       -Djkube.imagePullPolicy=Always \
+      -Djkube.skip.build=true \
+      -Djkube.image.name=${TARGET_IMAGE} \
       -Djib.from.image=${JIB_BASE_IMAGE} \
       -Djib.from.platforms=${JIB_PLATFORM} \
       -Djib.allowInsecureRegistries=true \
