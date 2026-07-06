@@ -19,6 +19,7 @@ import {EventStreamContentType, fetchEventSource} from "@microsoft/fetch-event-s
 import {EventSourceMessage} from "@microsoft/fetch-event-source/lib/cjs/parse";
 import {KaravanEvent, NotificationEventBus} from "@services/NotificationService";
 import {getCurrentUser} from "@api/auth/AuthApi";
+import {FatalError, RetriableError, retryOrRethrow, SseBackoff} from "@api/sseReconnect";
 
 export class NotificationApi {
 
@@ -45,7 +46,11 @@ export class NotificationApi {
             const headers: any = { Accept: "text/event-stream" };
             if (getCurrentUser()) {
                 NotificationApi.fetch('/ui/notification/system/' + getCurrentUser()?.username, controller, headers,
-                    ev => NotificationApi.onSystemMessage(ev));
+                    ev => NotificationApi.onSystemMessage(ev),
+                    // Events sent while disconnected are lost — after the system
+                    // stream reconnects, tell the app to resync its state.
+                    () => NotificationEventBus.sendEvent(new KaravanEvent(
+                        {id: '', event: 'reconnected', type: 'system', className: 'System', data: {}})));
                 NotificationApi.fetch('/ui/notification/user/' + getCurrentUser()?.username, controller, headers,
                     ev => NotificationApi.onUserMessage(ev));
             }
@@ -53,7 +58,10 @@ export class NotificationApi {
         return fetchData();
     };
 
-    static async fetch(input: string, controller: AbortController, headers: any, onmessage: (ev: EventSourceMessage) => void) {
+    static async fetch(input: string, controller: AbortController, headers: any,
+                       onmessage: (ev: EventSourceMessage) => void, onReconnect?: () => void) {
+        const backoff = new SseBackoff();
+        let hadConnection = false;
         fetchEventSource(input, {
             method: "GET",
             headers: headers,
@@ -61,18 +69,22 @@ export class NotificationApi {
             credentials: "include",
             async onopen(response) {
                 if (response.ok && response.headers.get('content-type') === EventStreamContentType) {
+                    backoff.reset();
+                    if (hadConnection) {
+                        onReconnect?.();
+                    }
+                    hadConnection = true;
                     return; // everything's good
                 } else if (response.status === 401) {
                     console.warn("SSE unauthorized: session missing/expired.");
-                    // Optional: trigger a global event/router redirect here
-                    throw new Error("unauthorized");
+                    throw new FatalError("unauthorized");
                 } else if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-                    // client-side errors are usually non-retriable:
+                    // client-side errors are non-retriable
                     console.error("Server side error ", response);
-                    // EventBus.sendAlert("Error fetching", `${input} : ${response.statusText}`, "danger");
+                    throw new FatalError(`bad-sse-response:${response.status}`);
                 } else {
-                    console.error("Error ", response);
-                    // EventBus.sendAlert("Error fetching", `${input} : ${response.statusText}`, "danger");
+                    // 5xx / proxy hiccup: retriable
+                    throw new RetriableError(`sse-response:${response.status}`);
                 }
             },
             onmessage(event) {
@@ -81,10 +93,12 @@ export class NotificationApi {
                 }
             },
             onclose() {
-                console.log("Connection closed by the server");
+                // Graceful close (server restart/redeploy): reconnect with backoff
+                // instead of leaving the app without live updates until a reload.
+                throw new RetriableError("notification stream closed");
             },
             onerror(err) {
-                console.log("There was an error from server", err);
+                return retryOrRethrow(err, backoff);
             },
         });
     }

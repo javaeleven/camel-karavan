@@ -18,11 +18,13 @@ package org.apache.camel.karavan.api;
 
 import io.quarkus.security.Authenticated;
 import io.vertx.core.json.JsonObject;
+import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.apache.camel.karavan.model.ProjectFile;
+import org.apache.camel.karavan.service.DevModeHotReloadService;
 import org.apache.camel.karavan.model.ProjectFileCommited;
 
 import java.net.URLDecoder;
@@ -33,6 +35,9 @@ import java.util.stream.Collectors;
 
 @Path("/ui/file")
 public class ProjectFileResource extends AbstractApiResource {
+
+    @Inject
+    DevModeHotReloadService devModeHotReloadService;
 
     @GET
     @Authenticated
@@ -118,6 +123,7 @@ public class ProjectFileResource extends AbstractApiResource {
             return Response.serverError().entity("File with given name already exists " + file.getName() + " in project " + file.getProjectId()).build();
         } else {
             karavanCache.saveProjectFile(file, null, true);
+            devModeHotReloadService.projectFilesChanged(file.getProjectId());
             return Response.ok(file).build();
         }
     }
@@ -130,6 +136,7 @@ public class ProjectFileResource extends AbstractApiResource {
         requireProjectWriteAccess(file.getProjectId());
         file.setLastUpdate(Instant.now().getEpochSecond() * 1000L);
         karavanCache.saveProjectFile(file, null, true);
+        devModeHotReloadService.projectFilesChanged(file.getProjectId());
         return file;
     }
 
@@ -158,6 +165,7 @@ public class ProjectFileResource extends AbstractApiResource {
                 karavanCache.saveProjectFile(file, null, true);
                 karavanCache.deleteProjectFile(projectId, filename);
                 karavanCache.deleteProjectFileCommited(projectId, filename);
+                devModeHotReloadService.projectFilesChanged(projectId);
                 return Response.ok(file).build();
             }
         } catch (Exception e) {
@@ -176,6 +184,7 @@ public class ProjectFileResource extends AbstractApiResource {
                 URLDecoder.decode(project, StandardCharsets.UTF_8),
                 URLDecoder.decode(filename, StandardCharsets.UTF_8)
         );
+        devModeHotReloadService.projectFilesChanged(URLDecoder.decode(project, StandardCharsets.UTF_8));
     }
 
     @POST

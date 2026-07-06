@@ -290,10 +290,19 @@ public class ProjectService {
      * Preserve a project's configured Git remote + owner across a repo re-import.
      */
     private void carryGitRemote(ProjectFolder existing, ProjectFolder rebuilt) {
-        if (existing != null && rebuilt != null && existing.getGitRepository() != null) {
+        if (existing == null || rebuilt == null) {
+            return;
+        }
+        if (existing.getGitRepository() != null) {
             rebuilt.setGitRepository(existing.getGitRepository());
             rebuilt.setGitBranch(existing.getGitBranch());
             rebuilt.setGitOwner(existing.getGitOwner());
+        }
+        // Local-only audit fields are not stored in the repo — carry them too so
+        // a re-import (post-push or import-on-create) keeps creator/access data.
+        if (existing.getCreatedBy() != null) {
+            rebuilt.setCreatedBy(existing.getCreatedBy());
+            rebuilt.setCreatedAt(existing.getCreatedAt());
         }
     }
 
@@ -351,6 +360,12 @@ public class ProjectService {
             throw new Exception("Project with id " + projectFolder.getProjectId() + " already exists");
         } else {
             karavanCache.saveProject(projectFolder, true);
+            // A project created with a remote that ALREADY holds this project
+            // (created by Karavan earlier, later deleted locally — deletion never
+            // touches the remote) is IMPORTED from the remote, not regenerated.
+            if (gitService.hasRemote(projectFolder) && importFromRemoteIfPresent(projectFolder)) {
+                return karavanCache.getProject(projectFolder.getProjectId());
+            }
             ProjectFile appProp = codeService.generateApplicationProperties(projectFolder);
             karavanCache.saveProjectFile(appProp, null, true);
             if (!ConfigService.inKubernetes()) {
@@ -386,7 +401,37 @@ public class ProjectService {
         p.setGitBranch(hasRepo && gitBranch != null && !gitBranch.isBlank() ? gitBranch : null);
         p.setGitOwner(hasRepo ? username : null);
         karavanCache.saveProject(p, true);
-        return p;
+        // Attaching a remote that already contains this project (e.g. re-attaching
+        // the repo of a previously deleted project) imports its content — the
+        // remote is the source of truth. An empty/new remote leaves local files
+        // untouched (they get published on the first push).
+        if (hasRepo) {
+            importFromRemoteIfPresent(p);
+        }
+        return karavanCache.getProject(projectId);
+    }
+
+    /**
+     * Imports the project's files from its remote when the remote already has a
+     * folder for this projectId. Returns false (and leaves the cache untouched)
+     * when the remote is empty, unreachable or has no such project — callers then
+     * proceed with locally generated/kept files.
+     */
+    private boolean importFromRemoteIfPresent(ProjectFolder projectFolder) {
+        try {
+            UserGitConfig user = projectFolder.getGitOwner() != null
+                    ? karavanCache.getUserGitConfig(projectFolder.getGitOwner()) : null;
+            List<PathCommitDetails> details = gitService.readProjectFromRepository(projectFolder, user);
+            if (details.stream().anyMatch(d -> !d.isFolder())) {
+                log.info("Remote already contains project {} - importing instead of generating files", projectFolder.getProjectId());
+                importProjectFromRepo(details, projectFolder);
+                return true;
+            }
+        } catch (Exception e) {
+            // empty repo (no HEAD), missing repo, auth/network issues: not importable
+            log.info("No importable content on remote for {}: {}", projectFolder.getProjectId(), e.getMessage());
+        }
+        return false;
     }
 
     public ProjectFolder copy(String sourceProjectId, ProjectFolder projectFolder) throws Exception {

@@ -18,6 +18,7 @@
 import {fetchEventSource} from "@microsoft/fetch-event-source";
 import {ProjectEventBus} from "@bus/ProjectEventBus";
 import {getCurrentUser} from "@api/auth/AuthApi";
+import {FatalError, RetriableError, retryOrRethrow, SseBackoff} from "@api/sseReconnect";
 
 export class LogWatchApi {
 
@@ -27,22 +28,26 @@ export class LogWatchApi {
                 Accept: "text/event-stream",
             };
             const url = `/ui/logwatch/${type}/${podName}/${getCurrentUser()?.username ?? ""}`;
+            const backoff = new SseBackoff();
             // BFF: authenticated by the session cookie (credentials:"include").
             await fetchEventSource(url, {
                 method: "GET", headers: headers, signal: controller.signal, credentials: "include",
                 async onopen(response) {
                     const ct = response.headers.get("content-type") || "";
                     if (response.ok && ct.toLowerCase().startsWith("text/event-stream")) {
-                        return; // good to go
+                        backoff.reset();
+                        // Fresh stream = fresh tail (the server replays the last 100
+                        // lines). Reset the buffer so a reconnect after a container
+                        // restart shows the NEW container's log, not stale lines.
+                        ProjectEventBus.sendLog('set', '');
+                        return;
                     }
-                    // Handle auth and other errors explicitly
                     if (response.status === 401) {
                         console.warn("SSE unauthorized: session missing/expired.");
-                        // Optional: trigger a global event/router redirect here
-                        throw new Error("unauthorized");
+                        throw new FatalError("unauthorized");
                     }
                     console.error("Unexpected SSE response", response.status, ct);
-                    throw new Error(`bad-sse-response:${response.status}`);
+                    throw new FatalError(`bad-sse-response:${response.status}`);
                 },
                 onmessage(event) {
                     if (event.event !== 'ping') {
@@ -50,10 +55,13 @@ export class LogWatchApi {
                     }
                 },
                 onclose() {
-                    console.log("Connection closed by the server");
+                    // Graceful close = the container stopped (log follow ended) or the
+                    // server restarted. Retry: when the container comes back (devmode
+                    // restart keeps the same name) the stream reattaches automatically.
+                    throw new RetriableError("log stream closed");
                 },
                 onerror(err) {
-                    console.log("There was an error from server", err);
+                    return retryOrRethrow(err, backoff);
                 },
             });
         };

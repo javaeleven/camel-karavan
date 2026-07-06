@@ -103,6 +103,10 @@ public class ConfigService {
     }
 
     public boolean inDockerSwarmMode() {
+        if (inKubernetes()) {
+            // no Docker socket in a pod — probing it just logs a connection error
+            return false;
+        }
         if (inDockerSwarmMode == null) {
             inDockerSwarmMode = dockerService.isInSwarmMode();
         }

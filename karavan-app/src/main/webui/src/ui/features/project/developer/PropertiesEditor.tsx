@@ -11,7 +11,8 @@ import {defaultEditorOptions} from "@features/project/developer/EditorConfig";
 import {useFileStore} from "@stores/ProjectStore";
 import {CodeUtils} from "@util/CodeUtils";
 import {capitalize} from "@patternfly/react-core";
-import {Group} from "react-resizable-panels";
+import {Group, Panel, Separator} from "react-resizable-panels";
+import {DependenciesPanel} from "@features/project/developer/DependenciesPanel";
 
 const languages = new Map<string, string>([
     ['sh', 'shell'],
@@ -154,17 +155,23 @@ export function PropertiesEditor() {
 
     return (
         <Group orientation="horizontal" className='editor-with-preview' style={{paddingTop: 6}}>
-            {file !== undefined && <MonacoEditorWrapper key={`${file.projectId}/${file.name}`}
-                                                        language={language || 'ini'}
-                                                        editorOptions={defaultEditorOptions}
-                                                        initialCode={code}
-                                                        onEditorDidMount={handleEditorDidMount}
-                                                        contextKeys={contextKeys}
-                                                        onChange={value => setCode(value)}
-                                                        markers={markers}
-                                                        decorations={decorations}
-                                                        codeActionProvider={propertiesActionProvider}
-            />}
+            <Panel minSize={30} defaultSize={65} className='editor-panel'>
+                {file !== undefined && <MonacoEditorWrapper key={`${file.projectId}/${file.name}`}
+                                                            language={language || 'ini'}
+                                                            editorOptions={defaultEditorOptions}
+                                                            initialCode={code}
+                                                            onEditorDidMount={handleEditorDidMount}
+                                                            contextKeys={contextKeys}
+                                                            onChange={value => setCode(value)}
+                                                            markers={markers}
+                                                            decorations={decorations}
+                                                            codeActionProvider={propertiesActionProvider}
+                />}
+            </Panel>
+            <Separator className='resize-handler'/>
+            <Panel minSize={15} defaultSize={35} className='preview-panel'>
+                <DependenciesPanel code={code ?? ''} onChange={value => setCode(value)}/>
+            </Panel>
         </Group>
     )
 }

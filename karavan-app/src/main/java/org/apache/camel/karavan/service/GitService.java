@@ -326,37 +326,9 @@ public class GitService {
         return git;
     }
 
-    private void addDeletedFolderToIndex(Git git, String projectId) {
-        log.info("Add folder {} to git index.", projectId);
-        try {
-            git.rm().addFilepattern(projectId + File.separator).call();
-        } catch (GitAPIException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    public void deleteProject(ProjectFolder projectFolder, String authorName, String authorEmail, UserGitConfig user) {
-        String projectId = projectFolder.getProjectId();
-        log.info("Delete and push project " + projectId);
-        GitConfig gitConfig = resolveGitConfig(projectFolder, user);
-        String uuid = UUID.randomUUID().toString();
-        String folder = vertx.fileSystem().createTempDirectoryBlocking(uuid);
-        String commitMessage = "Project " + projectId + " is deleted";
-        log.info("Temp folder {} is created for deletion of project {}", folder, projectId);
-        try {
-            Git git = getGit(true, folder, gitConfig);
-            addDeletedFolderToIndex(git, projectId);
-            commitAddedAndPush(git, gitConfig.getBranch(), commitMessage, authorName, authorEmail, List.of("."), projectId, gitConfig);
-            log.info("Delete Temp folder " + folder);
-            vertx.fileSystem().deleteRecursiveBlocking(folder);
-            log.info("Project {} deleted from Git", projectId);
-        } catch (RefNotFoundException e) {
-            log.error("Repository not found");
-        } catch (Exception e) {
-            log.error("Error", e);
-            throw new RuntimeException(e);
-        }
-    }
+    // NOTE: project deletion is local-only by design (cache + database).
+    // Karavan never deletes or rewrites a project's remote repository — the
+    // remote keeps its history so the project can be re-imported later.
 
     private Git clone(String dir, GitConfig gitConfig, boolean useBranch) throws GitAPIException, URISyntaxException {
         CloneCommand command = Git.cloneRepository();

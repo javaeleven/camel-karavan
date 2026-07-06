@@ -119,6 +119,16 @@ const sub = NotificationEventBus.onEvent()?.subscribe((event: KaravanEvent) => {
         // Refresh container + deployment + camel statuses immediately instead of
         // waiting for the next poll tick, so build/deploy/run/stop reflect at once.
         scheduleStatusRefresh(event.data?.projectId);
+    } else if (event.event === 'reconnected') {
+        // The system SSE stream was re-established after a drop (server restart,
+        // proxy idle-timeout, network blip). Any events sent meanwhile are lost —
+        // resync statuses and the open project's data so the UI catches up
+        // without a page reload.
+        scheduleStatusRefresh();
+        const openProjectId = useProjectStore.getState().project?.projectId;
+        if (openProjectId) {
+            ProjectService.refreshProjectData(openProjectId);
+        }
     } else if (event.event === 'error') {
         const error = event.data?.error;
         EventBus.sendAlert('Error', error, "danger");

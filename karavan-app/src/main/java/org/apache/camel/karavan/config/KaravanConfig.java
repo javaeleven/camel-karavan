@@ -198,6 +198,15 @@ public interface KaravanConfig {
         @WithDefault("false")
         Optional<Boolean> createm2();
 
+        /**
+         * Auto-reload a RUNNING devmode container when project files change
+         * (save/rename/delete in the UI, or a git pull) — debounced, so bursts
+         * of editor auto-saves coalesce into one reload.
+         */
+        @WithName("hot-reload")
+        @WithDefault("true")
+        boolean hotReload();
+
         Service service();
 
         Build build();

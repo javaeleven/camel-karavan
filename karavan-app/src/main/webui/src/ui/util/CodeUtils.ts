@@ -203,4 +203,42 @@ export class CodeUtils {
             })
             .join('\n');
     }
+
+    /**
+     * Parses the comma-separated camel.jbang.dependencies value into a list
+     * (e.g. ["camel:aws-bedrock", "mvn:com.prowidesoftware:pw-iso20022:SRU2024-10.2.7"]).
+     */
+    static getJbangDependencies(code: string): string[] {
+        const prop = CodeUtils.getApplicationPropertiesCurrentValues(code)
+            .find(p => p.name === JBANG_DEPENDENCIES_PROPERTY);
+        if (!prop?.value) return [];
+        return prop.value.split(',').map(d => d.trim()).filter(d => d.length > 0);
+    }
+
+    /**
+     * Writes the dependency list back into the properties code, editing the
+     * camel.jbang.dependencies line IN PLACE (comments and other lines are
+     * untouched). Appends the property if missing; removes the line when the
+     * list is empty.
+     */
+    static setJbangDependencies(code: string, dependencies: string[]): string {
+        const value = dependencies.map(d => d.trim()).filter(d => d.length > 0).join(',');
+        const lines = (code ?? '').split(/\r?\n/);
+        const index = lines.findIndex(l =>
+            !l.trim().startsWith('#') && l.substring(0, l.indexOf('=')).trim() === JBANG_DEPENDENCIES_PROPERTY);
+        if (index >= 0) {
+            if (value.length > 0) {
+                lines[index] = `${JBANG_DEPENDENCIES_PROPERTY}=${value}`;
+            } else {
+                lines.splice(index, 1);
+            }
+        } else if (value.length > 0) {
+            // insert after the last camel.jbang.* line to keep the file grouped
+            const lastJbang = lines.reduce((acc, l, i) => l.trim().startsWith('camel.jbang.') ? i : acc, -1);
+            lines.splice(lastJbang >= 0 ? lastJbang + 1 : lines.length, 0, `${JBANG_DEPENDENCIES_PROPERTY}=${value}`);
+        }
+        return lines.join('\n');
+    }
 }
+
+export const JBANG_DEPENDENCIES_PROPERTY = 'camel.jbang.dependencies';

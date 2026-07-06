@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.camel.karavan.model.ProjectFolder;
+import org.apache.camel.karavan.service.DevModeHotReloadService;
 import org.apache.camel.karavan.model.UserGitConfig;
 import org.apache.camel.karavan.service.GitService;
 import org.apache.camel.karavan.service.ProjectService;
@@ -40,6 +41,9 @@ import static org.apache.camel.karavan.KaravanEvents.CMD_PUSH_PROJECT;
 @Slf4j
 @Path("/ui/git")
 public class ProjectGitResource extends AbstractApiResource {
+
+    @Inject
+    DevModeHotReloadService devModeHotReloadService;
 
     @Inject
     ProjectService projectService;
@@ -113,6 +117,8 @@ public class ProjectGitResource extends AbstractApiResource {
         try {
             requireGitOwner(projectId);
             projectService.importProject(projectId, getIdentity().getString("username"));
+            // pulled files land in the cache — hot-reload a running devmode container
+            devModeHotReloadService.projectFilesChanged(projectId);
             return Response.ok().build();
         } catch (WebApplicationException e) {
             throw e;

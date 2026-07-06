@@ -109,3 +109,5 @@ logs.txt
 ai_docs/postgres-data/
 # local dev database (deploy/compose.yaml bind mount)
 deploy/postgres-data/
+
+github-creds.json

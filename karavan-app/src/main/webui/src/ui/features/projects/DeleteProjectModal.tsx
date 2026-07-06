@@ -45,8 +45,9 @@ export function DeleteProjectModal() {
                     <Content>
                         <Content component={ContentVariants.h3}>Delete project <b>{project?.projectId}</b> ?</Content>
                         <HelperText>
-                            <HelperTextItem variant="warning">
-                                Project will be also deleted from <b>git</b> repository
+                            <HelperTextItem variant="default">
+                                Deletes the project from Karavan only — the <b>git</b> repository is kept.
+                                Re-attach the same repository later to import the project back.
                             </HelperTextItem>
                         </HelperText>
                         <Content component={ContentVariants.p}></Content>

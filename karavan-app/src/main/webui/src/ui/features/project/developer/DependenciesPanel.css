@@ -1,0 +1,38 @@
+.dependencies-panel {
+    height: 100%;
+    overflow-y: auto;
+    padding: 8px 16px;
+    background-color: var(--pf-t--global--background--color--primary--default);
+}
+
+.dependencies-panel .dependencies-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.dependencies-panel .dependencies-panel-header .help-button {
+    margin-left: auto;
+    padding: 0;
+}
+
+.dependencies-panel .dependency-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.dependencies-panel .dependency-row .dependency-kind {
+    min-width: 64px;
+    justify-content: center;
+}
+
+.dependencies-panel .dependency-row .text-field {
+    flex-grow: 1;
+}
+
+.dependencies-panel .add-button {
+    margin-top: 4px;
+}

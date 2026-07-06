@@ -31,7 +31,6 @@ import org.apache.camel.karavan.docker.DockerService;
 import org.apache.camel.karavan.kubernetes.KubernetesService;
 import org.apache.camel.karavan.model.*;
 import org.apache.camel.karavan.service.ConfigService;
-import org.apache.camel.karavan.service.GitService;
 import org.apache.camel.karavan.service.ProjectService;
 
 import java.net.URLDecoder;
@@ -50,7 +49,6 @@ public class ProjectResource extends AbstractApiResource {
 
     private final DockerService dockerService;
 
-    private final GitService gitService;
 
     private final DevModeResource devModeResource;
 
@@ -111,22 +109,11 @@ public class ProjectResource extends AbstractApiResource {
     @Path("/{project}")
     public void delete(@PathParam("project") String project, @QueryParam("deleteContainers") boolean deleteContainers, @Context SecurityContext securityContext) throws Exception {
         String projectId = URLDecoder.decode(project, StandardCharsets.UTF_8);
-        // Capture the project + the acting user's git creds before cache eviction,
-        // so the git delete targets the project's own remote with the user's token.
         ProjectFolder projectFolder = karavanCache.getProject(projectId);
         if (projectFolder == null) {
             // Already gone — deletion is idempotent, return 204 instead of NPE-ing.
             log.info("Project " + projectId + " already deleted");
             return;
-        }
-        var identity = getIdentity();
-        String username = identity.getString("username");
-        boolean hasRemote = gitService.hasRemote(projectFolder);
-        // A project's remote is restricted to its owner: a non-owner may not push
-        // a deletion commit to it (deny the whole delete to keep cache and remote
-        // consistent). This is the only legitimate failure of this endpoint.
-        if (hasRemote && projectFolder.getGitOwner() != null && !Objects.equals(projectFolder.getGitOwner(), username)) {
-            throw new WebApplicationException("Git remote is restricted to " + projectFolder.getGitOwner(), Response.Status.FORBIDDEN);
         }
         // Project-level authorization: creator/assignees/admin only (legacy projects
         // with no recorded creator stay unrestricted).
@@ -144,22 +131,14 @@ public class ProjectResource extends AbstractApiResource {
                 log.warn("Container/deployment cleanup failed for " + projectId + ": " + e.getMessage());
             }
         }
-        UserGitConfig gitUser = karavanCache.getUserGitConfig(username);
-        // delete from cache
+        // Deletion is LOCAL-ONLY (cache + database). The remote git repository is
+        // intentionally never touched: it keeps the full history, so the project
+        // can be re-imported later by attaching the same repository again.
         karavanCache.getProjectFiles(projectId).forEach(file -> karavanCache.deleteProjectFile(projectId, file.getName()));
         karavanCache.getProjectFilesCommited(projectId).forEach(file -> karavanCache.deleteProjectFileCommited(projectId, file.getName()));
         karavanCache.deleteProject(projectId);
         karavanCache.deleteProjectCommited(projectId);
-        // Remote cleanup is best-effort: the project is already removed locally, so
-        // a push failure (auth, network, deleted remote) must not fail the request.
-        if (hasRemote) {
-            try {
-                gitService.deleteProject(projectFolder, username, identity.getString("email"), gitUser);
-            } catch (Exception e) {
-                log.warn("Git remote cleanup failed for " + projectId + ": " + e.getMessage());
-            }
-        }
-        log.info("Project deleted");
+        log.info("Project {} deleted from Karavan (remote git untouched)", projectId);
     }
 
     @POST
@@ -249,6 +228,16 @@ public class ProjectResource extends AbstractApiResource {
     @Path("/copy/{sourceProject}")
     public Response copy(@PathParam("sourceProject") String sourceProject, ProjectFolder projectFolder) {
         try {
+            // Same server-side stamping as create(): ownership and audit fields
+            // come from the authenticated identity, never from the client payload.
+            String username = getIdentity().getString("username");
+            if (username != null && projectFolder.getGitRepository() != null && !projectFolder.getGitRepository().isBlank()) {
+                projectFolder.setGitOwner(username);
+            } else {
+                projectFolder.setGitOwner(null);
+            }
+            projectFolder.setCreatedBy(username);
+            projectFolder.setCreatedAt(java.time.Instant.now().toEpochMilli());
             return Response.ok(projectService.copy(sourceProject, projectFolder)).build();
         } catch (Exception e) {
             return Response.serverError().entity(e.getMessage()).build();
