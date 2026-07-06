@@ -39,6 +39,9 @@ import static org.apache.camel.karavan.cache.CacheUtils.queryFirst;
 @Singleton
 public class KaravanCache {
 
+    // DB key namespace for commited (Source view) rows - live rows own the bare keys
+    private static final String COMMITED_KEY_PREFIX = "commited:";
+
     final Map<String, ProjectFolder> folders = new ConcurrentHashMap<>();
     final Map<String, ProjectFolderCommited> foldersCommited = new ConcurrentHashMap<>();
     final Map<String, ProjectFile> files = new ConcurrentHashMap<>();
@@ -114,13 +117,27 @@ public class KaravanCache {
     }
 
     public void saveProjectCommited(ProjectFolderCommited projectFolder) {
+        saveProjectCommited(projectFolder, true);
+    }
+
+    /**
+     * Commited (Source view) state must survive restarts: with per-project git
+     * there is no startup re-import to rebuild it, so it is persisted like any
+     * other cache type (persist=false only during hydration).
+     */
+    public void saveProjectCommited(ProjectFolderCommited projectFolder, boolean persist) {
         var key = GroupedKey.create(projectFolder.getProjectId(), DEV, projectFolder.getProjectId());
         foldersCommited.put(key, projectFolder);
+        if (persist) {
+            // "commited:" prefix: the live ProjectFolder row already owns this key
+            eventBus.publish(PERSIST_PROJECT, new CacheEvent(COMMITED_KEY_PREFIX + key, SAVE, projectFolder));
+        }
     }
 
     public void deleteProjectCommited(String projectId) {
         var key = GroupedKey.create(projectId, DEV, projectId);
         foldersCommited.remove(key);
+        eventBus.publish(PERSIST_PROJECT, new CacheEvent(COMMITED_KEY_PREFIX + key, DELETE, null));
     }
 
     public ProjectFolderCommited getProjectCommited(String projectId) {
@@ -195,17 +212,25 @@ public class KaravanCache {
     }
 
     public void deleteProjectFileCommited(String projectId) {
-        getProjectFilesCommited(projectId).forEach(file -> {
-            filesCommited.remove(GroupedKey.create(projectId, DEV, file.getName()));
-        });
+        getProjectFilesCommited(projectId).forEach(file -> deleteProjectFileCommited(projectId, file.getName()));
     }
 
     public void deleteProjectFileCommited(String projectId, String filename) {
-        filesCommited.remove(GroupedKey.create(projectId, DEV, filename));
+        var key = GroupedKey.create(projectId, DEV, filename);
+        filesCommited.remove(key);
+        eventBus.publish(PERSIST_PROJECT, new CacheEvent(COMMITED_KEY_PREFIX + key, DELETE, null));
     }
 
     public void saveProjectFileCommited(ProjectFileCommited file) {
-        filesCommited.put(GroupedKey.create(file.getProjectId(), DEV, file.getName()), file);
+        saveProjectFileCommited(file, true);
+    }
+
+    public void saveProjectFileCommited(ProjectFileCommited file, boolean persist) {
+        var key = GroupedKey.create(file.getProjectId(), DEV, file.getName());
+        filesCommited.put(key, file);
+        if (persist) {
+            eventBus.publish(PERSIST_PROJECT, new CacheEvent(COMMITED_KEY_PREFIX + key, SAVE, file));
+        }
     }
 
     // --- Deployment Status ---

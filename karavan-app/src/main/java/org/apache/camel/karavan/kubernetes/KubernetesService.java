@@ -221,6 +221,14 @@ public class KubernetesService {
 
     public Tuple2<LogWatch, KubernetesClient> getContainerLogWatch(String podName) {
         KubernetesClient client = kubernetesClient();
+        // watchLog() on a missing pod throws a KubernetesClientException whose
+        // message is the raw k8s Status JSON ({"kind":"Status",...,"code":404})
+        // — check existence first and fail with a clean, log-friendly message
+        // (the SSE stream then just closes; the client retries with backoff).
+        if (client.pods().inNamespace(getNamespace()).withName(podName).get() == null) {
+            client.close();
+            throw new IllegalStateException("Pod " + podName + " not found - no log to watch");
+        }
         LogWatch logWatch = client.pods().inNamespace(getNamespace()).withName(podName).tailingLines(100).watchLog();
         return Tuple2.of(logWatch, client);
     }

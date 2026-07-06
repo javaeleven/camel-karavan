@@ -35,7 +35,6 @@ export class LogWatchApi {
                 async onopen(response) {
                     const ct = response.headers.get("content-type") || "";
                     if (response.ok && ct.toLowerCase().startsWith("text/event-stream")) {
-                        backoff.reset();
                         // Fresh stream = fresh tail (the server replays the last 100
                         // lines). Reset the buffer so a reconnect after a container
                         // restart shows the NEW container's log, not stale lines.
@@ -50,6 +49,9 @@ export class LogWatchApi {
                     throw new FatalError(`bad-sse-response:${response.status}`);
                 },
                 onmessage(event) {
+                    // A real message (incl. ping) proves the stream is healthy —
+                    // only now reset the backoff (see sseReconnect.ts).
+                    backoff.reset();
                     if (event.event !== 'ping') {
                         ProjectEventBus.sendLog('add', event.data);
                     }

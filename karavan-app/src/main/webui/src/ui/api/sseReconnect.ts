@@ -31,7 +31,12 @@ export class RetriableError extends Error {
 export class FatalError extends Error {
 }
 
-/** Capped exponential backoff: 1s, 2s, 4s, 8s, 8s, ... reset on open. */
+/**
+ * Capped exponential backoff: 1s, 2s, 4s, 8s, 8s, ...
+ * IMPORTANT: reset on the first received MESSAGE, not on connection open — a
+ * stream for a nonexistent container opens fine and dies instantly; resetting
+ * on open turns the retry loop into a permanent ~1s hammer.
+ */
 export class SseBackoff {
     private attempt = 0;
 
