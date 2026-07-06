@@ -6,6 +6,8 @@ set -eo pipefail
 # (camel.jbang.runtime). camel-main and spring-boot share the jib-exploded path;
 # quarkus uses the Quarkus container-image extension. Defaults to camel-main.
 CAMEL_RUNTIME=${CAMEL_RUNTIME:-camel-main}
+# jib invoked by full coordinates (not in exported poms since Camel 4.18)
+JIB_VERSION=3.4.6
 
 git config --global credential.helper 'cache --timeout=3600'
 git_credential_fill() {
@@ -76,10 +78,13 @@ case "${CAMEL_RUNTIME}" in
       -Djib.to.auth.password=$IMAGE_REGISTRY_PASSWORD
     ;;
   *)
-    # camel-main: jib is in the generated pom. Force EXPLODED so the main class lands at
-    # /app/classes (not BOOT-INF/classes inside the Spring-Boot-loader fat jar), else
-    # the container crash-loops with ClassNotFoundException. See kubernetes/build.sh.
-    mvn package jib:build \
+    # camel-main: invoke jib by FULL COORDINATES (Camel 4.18 exports no longer add
+    # the plugin to the pom -> bare jib:build prefix fails). Force EXPLODED so the
+    # main class lands at /app/classes (not BOOT-INF/classes inside the fat jar),
+    # else the container crash-loops with ClassNotFoundException. See kubernetes/build.sh.
+    mvn package \
+      com.google.cloud.tools:jib-maven-plugin:${JIB_VERSION}:build \
+      -DskipTests \
       -Djib.containerizingMode=exploded \
       -Djib.from.platforms=${JIB_PLATFORM} \
       -Djib.allowInsecureRegistries=true \

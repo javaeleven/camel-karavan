@@ -13,3 +13,13 @@ spec:
         org.apache.camel.karavan/type: packaged
     spec:
       serviceAccount: karavan
+      # Explicit container: Camel >=4.18 exports carry no jib/jkube plugins, so no
+      # jkube generator runs (resource-only mode) and without this the generated
+      # Deployment has zero containers (422 Required value). jkube interpolates
+      # ${...} with Maven properties; jkube.image.name is passed by build.sh.
+      containers:
+        - name: ${project.artifactId}
+          image: ${jkube.image.name}
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
