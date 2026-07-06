@@ -292,8 +292,14 @@ public class GitService {
     public Tuple3<RevCommit, List<RemoteRefUpdate.Status>, List<String>> commitAddedAndPush(Git git, String branch, String message, String authorName, String authorEmail, List<String> fileNames, String projectId, GitConfig gitConfig) throws GitAPIException {
         log.info("Commit and push changes to the branch " + branch);
         AddCommand add = git.add();
-        for (String fileName : fileNames) {
-            add = add.addFilepattern(projectId + File.separator + fileName);
+        if (fileNames == null || fileNames.isEmpty()) {
+            // no selection = commit the whole project folder (an empty AddCommand
+            // throws NoFilepatternException and failed every push-all request)
+            add = add.addFilepattern(projectId + File.separator);
+        } else {
+            for (String fileName : fileNames) {
+                add = add.addFilepattern(projectId + File.separator + fileName);
+            }
         }
         log.info("Git add: " + add.call());
         RevCommit commit = git.commit().setMessage(message).setAuthor(new PersonIdent(authorName, authorEmail)).call();

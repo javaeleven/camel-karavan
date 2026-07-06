@@ -18,9 +18,14 @@ git_credential_fill() {
     echo password=$GIT_PASSWORD
 }
 git_credential_fill | git credential approve
-git clone --depth 1 --branch $GIT_BRANCH $GIT_REPOSITORY $CODE_DIR
+# CODE_DIR (/karavan/code) ships NON-EMPTY in the in-app-built devmode image
+# (kamelets/ layer) and `git clone` refuses a non-empty target — clone the build
+# source into its own fresh directory instead.
+SRC_DIR=${CODE_DIR}-src
+rm -rf $SRC_DIR
+git clone --depth 1 --branch $GIT_BRANCH $GIT_REPOSITORY $SRC_DIR
 
-cd $CODE_DIR/$PROJECT_ID
+cd $SRC_DIR/$PROJECT_ID
 
 # Per-project Camel version (camel.jbang.camelVersion in application.properties) wins
 # over the devmode image default, so each project can build on its own Camel version.

@@ -40,6 +40,22 @@ public class CacheLoader {
                     karavanCache.saveProjectFile(file, null, false);
                 });
 
+        // Commited (Source view) state: with per-project git there is no startup
+        // re-import to rebuild it, so it hydrates from the DB like everything else.
+        allEntities.stream()
+                .filter(entity -> ProjectFolderCommited.class.getSimpleName().equals(entity.type))
+                .forEach(entity -> {
+                    JsonObject json = new JsonObject(entity.data);
+                    karavanCache.saveProjectCommited(json.mapTo(ProjectFolderCommited.class), false);
+                });
+
+        allEntities.stream()
+                .filter(entity -> ProjectFileCommited.class.getSimpleName().equals(entity.type))
+                .forEach(entity -> {
+                    JsonObject json = new JsonObject(entity.data);
+                    karavanCache.saveProjectFileCommited(json.mapTo(ProjectFileCommited.class), false);
+                });
+
         persistenceService.getAll(AccessCacheEntity.class).forEach(entity -> {
             JsonObject json = new JsonObject(entity.data);
             if (AccessUser.class.getSimpleName().equals(entity.type)) {

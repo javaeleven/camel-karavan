@@ -69,7 +69,6 @@ export class NotificationApi {
             credentials: "include",
             async onopen(response) {
                 if (response.ok && response.headers.get('content-type') === EventStreamContentType) {
-                    backoff.reset();
                     if (hadConnection) {
                         onReconnect?.();
                     }
@@ -88,6 +87,8 @@ export class NotificationApi {
                 }
             },
             onmessage(event) {
+                // reset backoff on proven-healthy stream (any message incl. ping)
+                backoff.reset();
                 if (event.event !== 'ping') {
                     onmessage(event);
                 }

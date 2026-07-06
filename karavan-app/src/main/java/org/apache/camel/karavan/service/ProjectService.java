@@ -259,12 +259,15 @@ public class ProjectService {
             // remote info — carry the per-project remote forward from the cache.
             carryGitRemote(existing, projectFolder);
             ProjectFolderCommited projectFolderCommited = getProjectCommitedFromRepo(folderDetails);
-            karavanCache.saveProject(projectFolder, false);
+            // PERSIST imported state: with per-project git there is NO startup
+            // re-import — anything cache-only evaporates on the next restart/deploy
+            // ("projects show empty"). The DB must mirror the cache.
+            karavanCache.saveProject(projectFolder, true);
             karavanCache.saveProjectCommited(projectFolderCommited);
             karavanCache.deleteProjectFileCommited(projectFolder.getProjectId());
             filesDetails.forEach(repoFile -> {
                 ProjectFile file = new ProjectFile(repoFile.fileName(), repoFile.content(), repoFile.projectId(), repoFile.commitTime());
-                karavanCache.saveProjectFile(file, repoFile.commitId(), false);
+                karavanCache.saveProjectFile(file, repoFile.commitId(), true);
             });
         } catch (Exception e) {
             log.error("Error during project import", e);
