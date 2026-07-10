@@ -44,15 +44,17 @@ import {CamelUi} from "@features/project/designer/utils/CamelUi";
 export function useRouteDesignerHook() {
 
     const [integration, setIntegration] = useIntegrationStore((state) => [state.integration, state.setIntegration], shallow)
-    const [selectedUuids, clipboardSteps, shiftKeyPressed,
-        setShowDeleteConfirmation, setDeleteMessage, selectedStep, setSelectedStep, setSelectedUuids, setClipboardSteps, setShiftKeyPressed,
-        width, height] = useDesignerStore((s) =>
-        [s.selectedUuids, s.clipboardSteps, s.shiftKeyPressed,
-            s.setShowDeleteConfirmation, s.setDeleteMessage, s.selectedStep, s.setSelectedStep, s.setSelectedUuids, s.setClipboardSteps, s.setShiftKeyPressed,
-            s.width, s.height], shallow)
-    const [setParentId, setShowSelector, setSelectorTabIndex, setParentDsl, setShowSteps, setSelectedPosition, routeId, setRouteId, isRouteTemplate, setIsRouteTemplate] = useSelectorStore((s) =>
-        [s.setParentId, s.setShowSelector, s.setSelectorTabIndex, s.setParentDsl, s.setShowSteps, s.setSelectedPosition, s.routeId, s.setRouteId,
-            s.isRouteTemplate, s.setIsRouteTemplate], shallow)
+    // Subscribe to SETTERS ONLY (they never change), so this shared hook does NOT
+    // re-render its host on every selection/keypress. Volatile values (selectedUuids,
+    // shiftKeyPressed, clipboardSteps, selectedStep, routeId, isRouteTemplate) are read
+    // fresh via getState() inside the callbacks that need them. This is what lets the
+    // memoized DslElement/DslElementHeader skip re-rendering when selection changes.
+    const [setShowDeleteConfirmation, setDeleteMessage, setSelectedStep, setSelectedUuids, setClipboardSteps, setShiftKeyPressed] =
+        useDesignerStore((s) =>
+            [s.setShowDeleteConfirmation, s.setDeleteMessage, s.setSelectedStep, s.setSelectedUuids, s.setClipboardSteps, s.setShiftKeyPressed], shallow)
+    const [setParentId, setShowSelector, setSelectorTabIndex, setParentDsl, setShowSteps, setSelectedPosition, setRouteId, setIsRouteTemplate] = useSelectorStore((s) =>
+        [s.setParentId, s.setShowSelector, s.setSelectorTabIndex, s.setParentDsl, s.setShowSteps, s.setSelectedPosition, s.setRouteId,
+            s.setIsRouteTemplate], shallow)
 
     function isKamelet(): boolean {
         return integration.type === 'kamelet';
@@ -114,6 +116,7 @@ export function useRouteDesignerHook() {
     }
 
     const deleteElement = () => {
+        const {selectedUuids} = useDesignerStore.getState();
         EventBus.sendPosition("clean", new CamelElement(""), undefined, undefined, undefined, new DOMRect(), new DOMRect(), 0, 0);
         let i = integration;
         selectedUuids.forEach(uuidToDelete => {
@@ -128,6 +131,7 @@ export function useRouteDesignerHook() {
     }
 
     const selectElement = (element: CamelElement) => {
+        const {selectedUuids, shiftKeyPressed} = useDesignerStore.getState();
         const uuids = [...selectedUuids];
         let canNotAdd: boolean = false;
         if (shiftKeyPressed) {
@@ -189,6 +193,7 @@ export function useRouteDesignerHook() {
     }
 
     function copyToClipboard(): void {
+        const {selectedUuids} = useDesignerStore.getState();
         const steps: CamelElement[] = []
         selectedUuids.forEach(selectedUuid => {
             const selectedElement = CamelDefinitionApiExt.findElementInIntegration(integration, selectedUuid);
@@ -202,6 +207,7 @@ export function useRouteDesignerHook() {
     }
 
     function pasteFromClipboard(): void {
+        const {clipboardSteps, selectedUuids} = useDesignerStore.getState();
         if (clipboardSteps.length === 1 && clipboardSteps[0]?.dslName === 'FromDefinition') {
             const clone = CamelUtil.cloneStep(clipboardSteps[0], true);
             const route = CamelDefinitionApi.createRouteDefinition({from: clone});
@@ -252,6 +258,7 @@ export function useRouteDesignerHook() {
     }
 
     function onDslSelect(dsl: DslMetaModel, parentId: string, position?: number | undefined, fileName?: string) {
+        const {routeId, isRouteTemplate} = useSelectorStore.getState();
         switch (dsl.dsl) {
             case 'FromDefinition' :
                 if (isRouteTemplate) {
@@ -357,6 +364,7 @@ export function useRouteDesignerHook() {
     }
 
     const replaceFrom = (dsl: DslMetaModel) => {
+        const {selectedStep} = useDesignerStore.getState();
         const fromId = (selectedStep as FromDefinition).id;
         if (selectedStep && fromId && dsl.uri) {
             const clone = CamelUtil.cloneIntegration(integration);

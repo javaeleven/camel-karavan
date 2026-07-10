@@ -44,9 +44,17 @@ function DslElementHeader(props: Props) {
 
     const [integration] = useIntegrationStore((s) => [s.integration], shallow)
 
-    const [selectedStep, showMoveConfirmation, setShowMoveConfirmation, setMoveElements, passedIds, passedRouteId, failed, failedRouteId, suspendedNodeId, isDebugging] =
+    // Per-node subscriptions so a header re-renders only when ITS OWN selected/debug
+    // state changes, not on every selection or every streamed debug event. Combined with
+    // React.memo (export below), a click/step re-renders just the affected node headers.
+    const isSelected = useDesignerStore((s) => (s.selectedStep as any)?.id === (props.step as any).id);
+    const isPassed = useDesignerStore((s) => s.passedNodeIds.includes((props.step as any).id));
+    const isSuspended = useDesignerStore((s) => s.suspendedNodeId === (props.step as any).id);
+    const passedRouteId = useDesignerStore((s) => props.step.dslName === 'RouteDefinition' ? s.passedRouteId : undefined);
+    const failedRouteId = useDesignerStore((s) => props.step.dslName === 'RouteDefinition' ? s.failedRouteId : undefined);
+    const [setShowMoveConfirmation, setMoveElements, failed, isDebugging] =
         useDesignerStore((s) =>
-            [s.selectedStep, s.showMoveConfirmation, s.setShowMoveConfirmation, s.setMoveElements, s.passedNodeIds, s.passedRouteId, s.failed, s.failedRouteId, s.suspendedNodeId, s.isDebugging], shallow)
+            [s.setShowMoveConfirmation, s.setMoveElements, s.failed, s.isDebugging], shallow)
 
     const {step, parent} = props;
     const disabled = (step as any).disabled === true;
@@ -83,7 +91,7 @@ function DslElementHeader(props: Props) {
     }
 
     function isElementSelected(): boolean {
-        return (selectedStep as any)?.id === (step as any).id;
+        return isSelected;
     }
 
     function isWide(): boolean {
@@ -162,13 +170,13 @@ function DslElementHeader(props: Props) {
         } else {
             classes.push('header-icon-circle');
         }
-        const passed = passedIds.includes((step as any).id);
+        const passed = isPassed;
         if (step.dslName === 'FromDefinition') {
         }
         if (passed) {
             classes.push("header-icon-border-passed");
         }
-        if (suspendedNodeId === (step as any).id) {
+        if (isSuspended) {
             classes.push(failed ? "header-icon-border-failed" : "header-icon-border-current")
         }
         if (isMasGenerated) {
@@ -439,4 +447,6 @@ function DslElementHeader(props: Props) {
     return getHeader();
 }
 
-export default DslElementHeader
+// Memoized so parent re-renders / unrelated selection changes don't re-render this header;
+// it updates only when its own props or per-node selectors change.
+export default React.memo(DslElementHeader)

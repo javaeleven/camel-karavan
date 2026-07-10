@@ -107,3 +107,6 @@ logs.txt
 
 # agentic
 ai_docs/
+
+# local dev tooling (ActiveMQ sandbox, message pushers, etc.)
+tools/

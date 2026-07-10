@@ -118,13 +118,55 @@
     height: 100%;
     width: 100%;
     position: relative;
-    overflow-y: auto;
+    /* Scroll both ways: routes now flow left-to-right and can exceed the viewport width. */
+    overflow: auto;
 }
 
 .karavan .dsl-page .flows {
-    width: 100%;
-    position: absolute;
-    padding-bottom: 66px;
+    /* Lay routes out left-to-right instead of stacking them vertically. Each route is still
+       an internal top-down flow; only the top-level routes go side by side.
+       width:max-content grows the row with the number of routes; min-width forces it to
+       always be 800px WIDER than the graph viewport (100% = .graph width) so a horizontal
+       scrollbar ALWAYS exists with ~800px of scroll range — letting the user scroll right to
+       pull content out from under the floating properties sidebar even with only a few
+       routes. The gap leaves room for each route's external source/sink connectors. */
+    width: max-content;
+    /* IN-FLOW (relative), not absolute. An absolutely-positioned child's WIDTH does not
+       produce a horizontal scrollbar on .graph in this layout (only its height scrolls,
+       which is why widening it did nothing). As an in-flow element its width creates real
+       scrollable overflow — exactly how the tall content produces the vertical scroll.
+       .connections stays absolute at 0,0 and scrolls together with this layer.
+       The 800px .flows-end-spacer at the end of the row forces that extra scroll width. */
+    position: relative;
+    /* Horizontal padding reserves room for the first/last routes' external connectors. */
+    padding: 0 80px 66px 80px;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 120px;
+}
+
+/* Keep each top-level route at its natural size — never shrink to fit the row. */
+.karavan .dsl-page .flows > * {
+    flex-shrink: 0;
+}
+
+/* Fixed 800px spacer at the end of the route row. It adds real width to the in-flow
+   .flows, which forces the horizontal scrollbar / extra scroll space on the right so the
+   user can scroll content out from under the properties sidebar. */
+.karavan .dsl-page .flows .flows-end-spacer {
+    flex: 0 0 800px;
+    align-self: stretch;
+}
+
+/* Top-level routes/templates use `margin: 0 auto` to centre when stacked vertically.
+   In the horizontal row that auto margin would absorb the extra min-width space and
+   spread the routes apart, so zero it out — routes pack left, the extra width stays as
+   trailing scroll space. (!important overrides the equal-specificity .step-element rule.) */
+.karavan .dsl-page .flows > .step-element,
+.karavan .dsl-page .flows > .route-template-element {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
 }
 
 .karavan .dsl-page .flows .add-flow {
