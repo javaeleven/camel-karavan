@@ -12,6 +12,10 @@ import "./DevModeToolbar.css"
 import StopIcon from "@patternfly/react-icons/dist/esm/icons/stop-icon";
 import {ProjectContainersContext} from "../ProjectContainersContextProvider";
 import EllipsisVIcon from "@patternfly/react-icons/dist/esm/icons/ellipsis-v-icon";
+import BugIcon from "@patternfly/react-icons/dist/esm/icons/bug-icon";
+import StepForwardIcon from "@patternfly/react-icons/dist/esm/icons/step-forward-icon";
+import ForwardIcon from "@patternfly/react-icons/dist/esm/icons/forward-icon";
+import {useDesignerStore} from "@features/project/designer/DesignerStore";
 
 export function DevModeToolbar() {
 
@@ -21,6 +25,7 @@ export function DevModeToolbar() {
 
     const [config] = useAppConfigStore((s) => [s.config], shallow);
     const [project, refreshTrace, tabIndex] = useProjectStore((s) => [s.project, s.refreshTrace, s.tabIndex], shallow)
+    const [isDebugging] = useDesignerStore((s) => [s.isDebugging], shallow);
 
     const [showSpinner, setShowSpinner] = useState(false);
     const [reloadAvailable, setReloadAvailable] = useState(false);
@@ -132,6 +137,45 @@ export function DevModeToolbar() {
                         {"Reload"}
                     </Button>
                 </Tooltip>
+            }
+            {devModeIsRunning && inDevMode && !isDebugging &&
+                <Tooltip content="Start debugger" position={TooltipPosition.bottom}>
+                    <Button className="dev-action-button"
+                            isDisabled={inTransit}
+                            variant={"secondary"}
+                            icon={<BugIcon/>}
+                            onClick={() => ProjectService.startDebugger(project.projectId)}>
+                        {"Debug"}
+                    </Button>
+                </Tooltip>
+            }
+            {devModeIsRunning && inDevMode && isDebugging &&
+                <div style={{display: 'flex', flexDirection: 'row', gap: '8px'}}>
+                    <Tooltip content="Step" position={TooltipPosition.bottom}>
+                        <Button className="dev-action-button"
+                                variant={"secondary"}
+                                icon={<StepForwardIcon/>}
+                                onClick={() => ProjectService.debugStep(project.projectId)}>
+                            {"Step"}
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Resume" position={TooltipPosition.bottom}>
+                        <Button className="dev-action-button"
+                                variant={"secondary"}
+                                icon={<ForwardIcon/>}
+                                onClick={() => ProjectService.debugResume(project.projectId)}>
+                            {"Resume"}
+                        </Button>
+                    </Tooltip>
+                    <Tooltip content="Stop debugger" position={TooltipPosition.bottom}>
+                        <Button className="dev-action-button"
+                                variant={"control"}
+                                icon={<BugIcon/>}
+                                onClick={() => ProjectService.stopDebugger(project.projectId)}>
+                            {"Stop"}
+                        </Button>
+                    </Tooltip>
+                </div>
             }
             {inDevMode && !isKubernetes &&
                 <Tooltip content="Stop container" position={TooltipPosition.bottomEnd}>

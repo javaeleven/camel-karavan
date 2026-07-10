@@ -20,7 +20,8 @@ import {CamelStatus, ContainerImage, ContainerStatus, DeploymentStatus, Project,
 import {TemplateApi} from '@core/api/TemplateApi';
 import {InfrastructureAPI} from '@features/project/designer/utils/InfrastructureAPI';
 import {unstable_batchedUpdates} from 'react-dom'
-import {useDevModeStore, useFilesStore, useFileStore, useProjectsStore, useProjectStore, useStatusesStore} from '@stores/ProjectStore';
+import {useAppConfigStore, useDevModeStore, useFilesStore, useFileStore, useProjectsStore, useProjectStore, useStatusesStore} from '@stores/ProjectStore';
+import {DebugExchangeData, useDesignerStore} from '@features/project/designer/DesignerStore';
 import {ProjectEventBus} from '@bus/ProjectEventBus';
 import {EventBus} from "@features/project/designer/utils/EventBus";
 import {KameletApi} from "@core/api/KameletApi";
@@ -257,6 +258,149 @@ export class ProjectService {
                 useProjectStore.setState({camelTraces: []})
             }
         })
+    }
+
+    public static startDebugger(projectId: string) {
+        const env = useAppConfigStore.getState().config.environment;
+        KaravanApi.startDebugger(projectId, env, res => {
+            if (res.status >= 200 && res.status < 300) {
+                useDesignerStore.getState().setDebugging(true);
+            } else {
+                EventBus.sendAlert('Error starting debugger', (res as any)?.response?.data || res.statusText, 'warning')
+            }
+        });
+    }
+
+    public static stopDebugger(projectId: string) {
+        const env = useAppConfigStore.getState().config.environment;
+        KaravanApi.stopDebugger(projectId, env, res => {
+            if (!(res.status >= 200 && res.status < 300)) {
+                EventBus.sendAlert('Error stopping debugger', (res as any)?.response?.data || res.statusText, 'warning')
+            }
+            const designerStore = useDesignerStore.getState();
+            designerStore.setDebugging(false);
+            designerStore.setPassedNodeIds([]);
+            designerStore.setSuspendedNodeId(undefined);
+            designerStore.setFailed(false);
+            designerStore.setBreakpointNodeIds([]);
+            designerStore.setDebugExchanges({});
+        });
+    }
+
+    public static toggleBreakpoint(projectId: string, nodeId: string, isSet: boolean) {
+        const env = useAppConfigStore.getState().config.environment;
+        const designerStore = useDesignerStore.getState();
+        // Optimistic local update so the UI reacts instantly; the next poll of
+        // /ui/debug/state reconciles with the backend's breakpoints[] list.
+        const current = designerStore.breakpointNodeIds;
+        const next = isSet
+            ? Array.from(new Set([...current, nodeId]))
+            : current.filter(id => id !== nodeId);
+        designerStore.setBreakpointNodeIds(next);
+
+        const after = (res: any) => {
+            if (!(res.status >= 200 && res.status < 300)) {
+                EventBus.sendAlert('Error updating breakpoint', (res as any)?.response?.data || res.statusText, 'warning')
+            }
+        };
+        if (isSet) {
+            KaravanApi.addBreakpoint(projectId, env, nodeId, after);
+        } else {
+            KaravanApi.removeBreakpoint(projectId, env, nodeId, after);
+        }
+    }
+
+    public static debugStep(projectId: string) {
+        const env = useAppConfigStore.getState().config.environment;
+        KaravanApi.debugStep(projectId, env, res => {
+            if (!(res.status >= 200 && res.status < 300)) {
+                EventBus.sendAlert('Error stepping debugger', (res as any)?.response?.data || res.statusText, 'warning')
+            }
+        });
+    }
+
+    public static debugResume(projectId: string) {
+        const env = useAppConfigStore.getState().config.environment;
+        KaravanApi.debugResume(projectId, env, res => {
+            if (!(res.status >= 200 && res.status < 300)) {
+                EventBus.sendAlert('Error resuming debugger', (res as any)?.response?.data || res.statusText, 'warning')
+            }
+        });
+    }
+
+    // Best-effort normalizer for Camel's BacklogTracerEventMessage-shaped headers/properties:
+    // accepts either an array of {key,type,value} entries or a plain object map, and always
+    // returns a plain object so the sidebar can render it uniformly.
+    private static normalizeKeyValueList(input: any): Record<string, any> {
+        if (input === undefined || input === null) return {};
+        if (Array.isArray(input)) {
+            const result: Record<string, any> = {};
+            input.forEach((entry: any) => {
+                if (entry && typeof entry === 'object' && 'key' in entry) {
+                    result[entry.key] = 'value' in entry ? entry.value : '';
+                }
+            });
+            return result;
+        }
+        if (typeof input === 'object') return input;
+        return {};
+    }
+
+    public static refreshDebugState(projectId: string, env: string) {
+        KaravanApi.getDebugState(projectId, env, res => {
+            if (res.status !== 200) {
+                return;
+            }
+            // The Camel dev console wraps its payload in a top-level "debug" object, and
+            // returns breakpoints as {nodeId, suspended} objects (not plain strings).
+            let root: any = res.data;
+            if (typeof root === 'string') {
+                try { root = JSON.parse(root); } catch (e) { root = {}; }
+            }
+            const data = (root && root.debug) ? root.debug : (root || {});
+            const designerStore = useDesignerStore.getState();
+
+            if (Array.isArray(data.breakpoints)) {
+                const ids = data.breakpoints
+                    .map((b: any) => (typeof b === 'string' ? b : b?.nodeId))
+                    .filter((id: any): id is string => typeof id === 'string');
+                designerStore.setBreakpointNodeIds(ids);
+            }
+
+            const suspendedList: any[] = Array.isArray(data.suspended) ? data.suspended : [];
+            const exchanges: Record<string, DebugExchangeData> = {};
+            let anyFailed = false;
+            suspendedList.forEach((item: any) => {
+                const nodeId: string | undefined = item?.nodeId || item?.toNode;
+                if (!nodeId) return;
+                const message = item?.message || {};
+                const body = message?.body?.value ?? message?.body ?? item?.body;
+                const headers = ProjectService.normalizeKeyValueList(message?.headers ?? item?.headers);
+                const exchangeProperties = ProjectService.normalizeKeyValueList(message?.exchangeProperties ?? item?.exchangeProperties);
+                exchanges[nodeId] = {
+                    nodeId: nodeId,
+                    exchangeId: item?.exchangeId,
+                    body: body,
+                    headers: headers,
+                    exchangeProperties: exchangeProperties,
+                };
+                if (item?.failed === true || item?.exception !== undefined || message?.exception !== undefined) {
+                    anyFailed = true;
+                }
+            });
+
+            // Accumulate + dedupe passed nodes: every node we've ever seen suspended at
+            // stays highlighted "passed" once execution moves beyond it.
+            const previousPassed = designerStore.passedNodeIds;
+            const newlyPassed = Object.keys(exchanges).filter(id => !previousPassed.includes(id));
+            if (newlyPassed.length > 0) {
+                designerStore.setPassedNodeIds([...previousPassed, ...newlyPassed]);
+            }
+
+            designerStore.setDebugExchanges({...designerStore.debugExchanges, ...exchanges});
+            designerStore.setSuspendedNodeId(suspendedList.length > 0 ? (suspendedList[0]?.nodeId || suspendedList[0]?.toNode) : undefined);
+            designerStore.setFailed(anyFailed);
+        });
     }
 
     public static refreshImages(projectId: string) {
