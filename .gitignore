@@ -89,6 +89,7 @@ karavan-app/cache-data
 karavan-cloud/karavan-secret-real.yaml
 
 docs/install/karavan-docker/data/*
+docs/install/karavan-docker/postgres-data
 
 **/dependency-reduced-pom.xml
 
