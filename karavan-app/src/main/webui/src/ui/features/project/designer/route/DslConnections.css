@@ -154,3 +154,11 @@
         animation: none;
     }
 }
+
+/* TODO added by mina */
+.graph{
+    height:88% !important;
+}
+.connections{
+    height:calc(100% + 600px) !important;
+}
