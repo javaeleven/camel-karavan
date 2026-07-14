@@ -49,7 +49,8 @@ services:
     volumes:
       # Postgres 18+ images store data in a major-version subdirectory, so the
       # mount must be the parent dir (/var/lib/postgresql), not /.../data.
-      - ./postgres-data:/var/lib/postgresql
+      # A named volume (not a bind mount) so `docker compose down -v` removes it.
+      - postgres-data:/var/lib/postgresql
 
   registry:
     container_name: registry
@@ -65,3 +66,6 @@ services:
 networks:
   karavan:
     name: karavan
+
+volumes:
+  postgres-data:

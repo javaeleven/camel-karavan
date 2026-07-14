@@ -187,7 +187,7 @@ base=http://localhost:8081
 ```bash
 # DEV
 docker compose -f docs/install/karavan-docker/docker-compose.yaml up -d postgres
-KARAVAN_DEVMODE_BUILD_ENABLED=false QUARKUS_PROFILE=public ./gradlew :karavan-app:quarkusDev          # http://localhost:8080
+KARAVAN_DEVMODE_BUILD_ENABLED=false QUARKUS_PROFILE=public,local ./gradlew :karavan-app:quarkusDev          # http://localhost:8080
 
 # BUILD IMAGE (fresh SPA guaranteed)
 make image-build REGISTRY=localhost:5005 JIB_PLATFORM=linux/amd64

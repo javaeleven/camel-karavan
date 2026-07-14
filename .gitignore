@@ -102,7 +102,7 @@ CLAUDE.md
 deploy/eks/
 deploy/helm/karavan/values-eks.yaml
 deploy/helm/karavan/values-auth0.yaml
-
+deploy/postgres-data
 # local debug log
 logs.txt
 
