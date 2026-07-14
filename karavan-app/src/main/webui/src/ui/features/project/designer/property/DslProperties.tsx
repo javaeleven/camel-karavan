@@ -17,10 +17,18 @@
 import React, {ReactElement, useEffect, useState} from 'react';
 import {
     Button,
+    CodeBlock,
+    CodeBlockCode,
     Content,
     ContentVariants,
+    DescriptionList,
+    DescriptionListDescription,
+    DescriptionListGroup,
+    DescriptionListTerm,
+    EmptyState,
     ExpandableSection,
     Form,
+    Label,
     TextInputGroup,
     TextInputGroupMain,
     TextInputGroupUtilities,
@@ -66,6 +74,8 @@ export function DslProperties(props: Props) {
 
     const [selectedStep, setParameterPlaceholders, tab]
         = useDesignerStore((s) => [s.selectedStep, s.setParameterPlaceholders, s.tab], shallow)
+
+    const [isDebugging, debugExchanges, suspendedNodeId] = useDesignerStore((s) => [s.isDebugging, s.debugExchanges, s.suspendedNodeId], shallow)
 
     const [propertyFilter, changedOnly, requiredOnly, setChangedOnly, sensitiveOnly, setSensitiveOnly, setPropertyFilter, setRequiredOnly]
         = usePropertiesStore((s) => [s.propertyFilter, s.changedOnly, s.requiredOnly, s.setChangedOnly, s.sensitiveOnly, s.setSensitiveOnly, s.setPropertyFilter, s.setRequiredOnly], shallow)
@@ -236,15 +246,88 @@ export function DslProperties(props: Props) {
         return showAdvanced || getPropertySelectorChanged();
     }
 
+    function formatExchangeValue(value: any): string {
+        if (value === undefined || value === null) return '';
+        if (typeof value === 'string') return value;
+        try {
+            return JSON.stringify(value, null, 2);
+        } catch (e) {
+            return String(value);
+        }
+    }
+
+    // Read-only view of the exchange (body/headers/properties) at the node the
+    // debugger is CURRENTLY suspended on — independent of which node is selected, so
+    // the user never has to click a node (clicking toggles a breakpoint) to see it.
+    // Editing exchange data is out of scope for v1.
+    function getExchangeView(): ReactElement | undefined {
+        const nodeId = suspendedNodeId;
+        const exchange = nodeId ? debugExchanges[nodeId] : undefined;
+        if (!exchange) {
+            return (
+                <div className="exchange-view exchange-view-empty">
+                    <EmptyState titleText="Route not suspended" headingLevel="h4">
+                        <Content component={ContentVariants.small}>
+                            The route is running. Set a breakpoint on a node and send a message; when it pauses, the current exchange appears here.
+                        </Content>
+                    </EmptyState>
+                </div>
+            )
+        }
+        const headers = exchange.headers || {};
+        const exchangeProperties = exchange.exchangeProperties || {};
+        return (
+            <div className="exchange-view">
+                <div className="exchange-view-title">
+                    <Title headingLevel="h3" size="md">Exchange @ {nodeId}</Title>
+                    {exchange.exchangeId && <Label isCompact>{exchange.exchangeId}</Label>}
+                </div>
+                <Title headingLevel="h4" size="md">Body</Title>
+                <CodeBlock>
+                    <CodeBlockCode id={"exchange-body-" + nodeId}>{formatExchangeValue(exchange.body)}</CodeBlockCode>
+                </CodeBlock>
+                <Title headingLevel="h4" size="md">Headers</Title>
+                {Object.keys(headers).length === 0
+                    ? <Content component={ContentVariants.small}>No headers</Content>
+                    : (
+                        <DescriptionList isCompact isHorizontal>
+                            {Object.keys(headers).map(key => (
+                                <DescriptionListGroup key={key}>
+                                    <DescriptionListTerm>{key}</DescriptionListTerm>
+                                    <DescriptionListDescription>{formatExchangeValue(headers[key])}</DescriptionListDescription>
+                                </DescriptionListGroup>
+                            ))}
+                        </DescriptionList>
+                    )
+                }
+                <Title headingLevel="h4" size="md">Properties</Title>
+                {Object.keys(exchangeProperties).length === 0
+                    ? <Content component={ContentVariants.small}>No properties</Content>
+                    : (
+                        <DescriptionList isCompact isHorizontal>
+                            {Object.keys(exchangeProperties).map(key => (
+                                <DescriptionListGroup key={key}>
+                                    <DescriptionListTerm>{key}</DescriptionListTerm>
+                                    <DescriptionListDescription>{formatExchangeValue(exchangeProperties[key])}</DescriptionListDescription>
+                                </DescriptionListGroup>
+                            ))}
+                        </DescriptionList>
+                    )
+                }
+            </div>
+        )
+    }
+
     return (
         <div key={selectedStep ? selectedStep.uuid : 'integration'}
              className='properties'>
             <Form autoComplete="off" onSubmit={event => event.preventDefault()}>
-                {selectedStep === undefined && <IntegrationHeader/>}
-                {selectedStep && getPropertiesHeader()}
-                {selectedStep !== undefined && getPropertySelector()}
-                {getPropertyFields(propertiesMain)}
-                {selectedStep && ['MarshalDefinition', 'UnmarshalDefinition'].includes(selectedStep.dslName) &&
+                {isDebugging && getExchangeView()}
+                {!isDebugging && selectedStep === undefined && <IntegrationHeader/>}
+                {!isDebugging && selectedStep && getPropertiesHeader()}
+                {!isDebugging && selectedStep !== undefined && getPropertySelector()}
+                {!isDebugging && getPropertyFields(propertiesMain)}
+                {!isDebugging && selectedStep && ['MarshalDefinition', 'UnmarshalDefinition'].includes(selectedStep.dslName) &&
                     <DataFormatField
                         integration={integration}
                         dslName={selectedStep.dslName}
@@ -253,7 +336,7 @@ export function DslProperties(props: Props) {
                         expressionEditor={props.expressionEditor}
                     />
                 }
-                {selectedStep && propertiesAdvanced.length > 0 &&
+                {!isDebugging && selectedStep && propertiesAdvanced.length > 0 &&
                     <ExpandableSection
                         toggleText={'Processors advanced properties'}
                         onToggle={(_event, isExpanded) => setShowAdvanced(!showAdvanced)}

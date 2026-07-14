@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import {ReactElement, useEffect, useState} from 'react';
+import {ReactElement, useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
 import './DslConnections.css';
 import {DslPosition, EventBus} from "../utils/EventBus";
 import {CamelUi} from "../utils/CamelUi";
@@ -23,7 +23,6 @@ import {shallow} from "zustand/shallow";
 import {CamelDefinitionApiExt} from "@core/api/CamelDefinitionApiExt";
 import {IncomingLink, TopologyUtils} from "@core/api/TopologyUtils";
 import {CamelElement} from "@core/model/IntegrationDefinition";
-import {v4 as uuidv4} from "uuid";
 import {Button, Tooltip} from "@patternfly/react-core";
 import {InfrastructureAPI} from "../utils/InfrastructureAPI";
 import {getIntegrations} from "@features/project/project-topology/TopologyApi";
@@ -39,11 +38,47 @@ export function DslConnections() {
     const [integration, files] = useIntegrationStore((s) => [s.integration, s.files], shallow)
     const [width, height, top, left] = useDesignerStore((s) =>
         [s.width, s.height, s.top, s.left], shallow)
-    const [steps, addStep, deleteStep, clearSteps] =
-        useConnectionsStore((s) => [s.steps, s.addStep, s.deleteStep, s.clearSteps], shallow)
+    const [steps, deleteStep, clearSteps, setSteps] =
+        useConnectionsStore((s) => [s.steps, s.deleteStep, s.clearSteps, s.setSteps], shallow)
 
-    const [svgKey, setSvgKey] = useState<string>('svgKey');
     const [tons, setTons] = useState<Map<string, IncomingLink[]>>(new Map<string, IncomingLink[]>());
+
+    // Every node reports its position (via EventBus -> setPosition) on every render
+    // pass. Previously each "add" cloned the whole steps Map and triggered a full
+    // re-render of the arrow layer, so N nodes => O(N^2) work + N re-renders.
+    // Instead we buffer incoming positions and apply ONE merged store update per
+    // animation frame => O(N) work + a single re-render.
+    const pendingRef = useRef<Map<string, DslPosition>>(new Map<string, DslPosition>());
+    const rafRef = useRef<number | null>(null);
+
+    const flushPositions = useCallback(() => {
+        rafRef.current = null;
+        const pending = pendingRef.current;
+        if (pending.size === 0) return;
+        pendingRef.current = new Map<string, DslPosition>();
+        const current = useConnectionsStore.getState().steps;
+        const next = new Map(current);
+        pending.forEach((value, key) => next.set(key, value));
+        setSteps(next);
+    }, [setSteps]);
+
+    // Subscribe in a LAYOUT effect, once, on mount — NOT a passive useEffect. The child
+    // node refs fire their initial sendPosition() during the same commit's layout phase;
+    // because DslConnections is rendered before the .flows subtree, its layout effect runs
+    // first, so the subscription is live before those initial positions are emitted.
+    // (A passive useEffect subscribed after paint and dropped the initial batch, so arrows
+    // only appeared once a node re-rendered — e.g. on click.)
+    useLayoutEffect(() => {
+        const sub1 = EventBus.onPosition()?.subscribe((evt: DslPosition) => setPosition(evt));
+        return () => {
+            sub1?.unsubscribe();
+            if (rafRef.current !== null) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         const integrations = getIntegrations(files);
@@ -51,24 +86,24 @@ export function DslConnections() {
         const openApiJson = openApiFile?.code;
         const data = TopologyUtils.getIncomingLinkMap(integrations, openApiJson);
         setTons(data);
-        const sub1 = EventBus.onPosition()?.subscribe((evt: DslPosition) => setPosition(evt));
-        return () => {
-            sub1?.unsubscribe();
-        };
     }, [files]);
 
     useEffect(() => {
         const toDelete1: string[] = Array.from(steps.keys()).filter(k => CamelDefinitionApiExt.findElementInIntegration(integration, k) === undefined);
         toDelete1.forEach(key => deleteStep(key));
-        setSvgKey(uuidv4())
     }, [integration]);
 
     function setPosition(evt: DslPosition) {
         if (evt.command === "add") {
-            addStep(evt.step.uuid, evt);
+            pendingRef.current.set(evt.step.uuid, evt);
+            if (rafRef.current === null) {
+                rafRef.current = requestAnimationFrame(flushPositions);
+            }
         } else if (evt.command === "delete") {
+            pendingRef.current.delete(evt.step.uuid);
             deleteStep(evt.step.uuid);
         } else if (evt.command === "clean") {
+            pendingRef.current.clear();
             clearSteps();
         }
     }
@@ -110,10 +145,12 @@ export function DslConnections() {
             const fromY = pos.headerRect.y + pos.headerRect.height / 2 - top;
             const r = pos.headerRect.height / 2;
 
-            const incomingX = 20;
+            // Local to this route: source circle sits just left of the From node (was a
+            // global left-edge bus at x=20, which only made sense when routes stacked).
+            const incomingX = fromX - pos.headerRect.width / 2 - 34;
             const lineX1 = incomingX + r;
             const lineY1 = fromY;
-            const lineX2 = fromX - r * 2 + 7;
+            const lineX2 = fromX - pos.headerRect.width / 2 - 2;
             const lineY2 = fromY;
             const isInternal = data[2] === 'internal';
             const isNav = data[2] === 'nav';
@@ -145,9 +182,10 @@ export function DslConnections() {
             const name: string = internalCall ? (step?.parameters?.name) : undefined;
             const links = internalCall ? tons.get(uri + ':' + name) || [] : [];
             const isInternal = data[2] === 'internal';
+            const fromX = pos.headerRect.x + pos.headerRect.width / 2 - left;
             const fromY = pos.headerRect.y + pos.headerRect.height / 2 - top;
             const r = pos.headerRect.height / 2;
-            const incomingX = 20;
+            const incomingX = fromX - pos.headerRect.width / 2 - 34;
             const imageX = incomingX - r + 6;
             const imageY = fromY - r + 6;
             return (!isInternal
@@ -232,16 +270,15 @@ export function DslConnections() {
             const fromY = pos.headerRect.y + pos.headerRect.height / 2 - top;
             const r = pos.headerRect.height / 2;
 
-            const outgoingX = width - 20;
-            const outgoingY = data[1] + RADIUS;
+            // Local to this route: sink circle sits just right of the To/Poll node (was a
+            // global right-edge bus at x=width-20, which only worked with stacked routes).
+            const outgoingX = fromX + pos.headerRect.width / 2 + 34;
+            const outgoingY = fromY;
 
-            const lineX1 = fromX + r;
+            const lineX1 = fromX + pos.headerRect.width / 2 + 2;
             const lineY1 = fromY;
-            const lineX2 = outgoingX - r * 2 + (isPoll ? 14 : 6);
+            const lineX2 = outgoingX - r - (isPoll ? -8 : 0);
             const lineY2 = outgoingY;
-
-            const lineXi = lineX1 + 40;
-            const lineYi = lineY2;
 
             const className = isNav
                 ? 'path-incoming-nav'
@@ -251,7 +288,7 @@ export function DslConnections() {
                     ? <g key={pos.step.uuid + "-outgoing"}>
                         <circle cx={outgoingX} cy={outgoingY} r={r} className="circle-outgoing"/>
                         <path
-                            d={`M ${lineX1},${lineY1} C ${lineXi - 20}, ${lineY1} ${lineX1 - RADIUS},${lineYi} ${lineXi},${lineYi} L ${lineX2},${lineY2}`}
+                            d={`M ${lineX1},${lineY1} L ${lineX2},${lineY2}`}
                             className={className} markerStart={isPoll ? "url(#arrowheadLeft)" : "none"} markerEnd={isPoll ? "none" : "url(#arrowheadRight)"}/>
                     </g>
                     : <div key={pos.step.uuid + "-outgoing"} style={{display: 'none'}}></div>
@@ -268,9 +305,11 @@ export function DslConnections() {
             const isNav = data[2] === 'nav';
             const internalCall = step && uri && step?.dslName === 'ToDefinition' && isNav;
             const name = internalCall ? (step?.parameters?.name ? step?.parameters.name : step?.parameters?.address) : '';
+            const fromX = pos.headerRect.x + pos.headerRect.width / 2 - left;
+            const fromY = pos.headerRect.y + pos.headerRect.height / 2 - top;
             const r = pos.headerRect.height / 2;
-            const outgoingX = width - 20;
-            const outgoingY = data[1] + RADIUS;
+            const outgoingX = fromX + pos.headerRect.width / 2 + 34;
+            const outgoingY = fromY;
             const imageX = outgoingX - r + 6;
             const imageY = outgoingY - r + 6;
             return (!isInternal
@@ -470,17 +509,17 @@ export function DslConnections() {
             + ` L ${LX2} ${LY2}`
             + ` Q ${Q2_X1} ${Q2_Y1} ${Q2_X2} ${Q2_Y2}`
         return (
-            <path key={uuidv4()} name={key} d={path} className="path" markerEnd="url(#arrowheadRight)"/>
+            <path key={key} name={key} d={path} className="path" markerEnd="url(#arrowheadRight)"/>
         )
     }
 
-    function getSvg() {
+    function getSvg(incomings: [string, number, ConnectionType][], outgoings: [string, number, ConnectionType][]) {
         const stepsArray = Array.from(steps.values());
         const arrows = stepsArray.map(pos => getArrow(pos)).flat(1);
         const uniqueArrows = [...new Map(arrows.map(item => [(item as any).key, item])).values()];
 
         return (
-            <svg key={svgKey}
+            <svg key="dsl-svg"
                  style={{width: width, height: height, position: "absolute", left: 0, top: 0}}
                  viewBox={"0 0 " + (width) + " " + (height)}>
                 <defs key='defs'>
@@ -495,17 +534,22 @@ export function DslConnections() {
                 </defs>
                 {stepsArray.map(pos => getCircle(pos))}
                 {uniqueArrows}
-                {getIncomings().map(p => getIncoming(p))}
-                {getOutgoings().map(p => getOutgoing(p))}
+                {incomings.map(p => getIncoming(p))}
+                {outgoings.map(p => getOutgoing(p))}
             </svg>
         )
     }
 
+    // Compute the incoming/outgoing lists once per render and reuse them for both
+    // the SVG paths and the icon overlay (previously each list was built twice,
+    // duplicating the sort + overlap-gap loop on every render).
+    const incomings = getIncomings();
+    const outgoings = getOutgoings();
     return (
         <div id="connections" className="connections" style={{width: width, height: height}}>
-            {getSvg()}
-            {getIncomings().map(p => getIncomingIcons(p))}
-            {getOutgoings().map(p => getOutgoingIcons(p))}
+            {getSvg(incomings, outgoings)}
+            {incomings.map(p => getIncomingIcons(p))}
+            {outgoings.map(p => getOutgoingIcons(p))}
         </div>
     )
 }

@@ -440,6 +440,69 @@ export class KaravanApi {
         });
     }
 
+    static async startDebugger(projectId: string, env: string, after: (res: AxiosResponse<any>) => void) {
+        instance.post(`/ui/debug/enable/${projectId}/${env}`)
+            .then(res => {
+                after(res);
+            }).catch(err => {
+            after(err);
+        });
+    }
+
+    static async stopDebugger(projectId: string, env: string, after: (res: AxiosResponse<any>) => void) {
+        instance.post(`/ui/debug/disable/${projectId}/${env}`)
+            .then(res => {
+                after(res);
+            }).catch(err => {
+            after(err);
+        });
+    }
+
+    static async addBreakpoint(projectId: string, env: string, nodeId: string, after: (res: AxiosResponse<any>) => void) {
+        instance.post(`/ui/debug/breakpoint/${projectId}/${env}/${nodeId}`)
+            .then(res => {
+                after(res);
+            }).catch(err => {
+            after(err);
+        });
+    }
+
+    static async removeBreakpoint(projectId: string, env: string, nodeId: string, after: (res: AxiosResponse<any>) => void) {
+        instance.delete(`/ui/debug/breakpoint/${projectId}/${env}/${nodeId}`)
+            .then(res => {
+                after(res);
+            }).catch(err => {
+            after(err);
+        });
+    }
+
+    static async debugStep(projectId: string, env: string, after: (res: AxiosResponse<any>) => void) {
+        instance.post(`/ui/debug/step/${projectId}/${env}`)
+            .then(res => {
+                after(res);
+            }).catch(err => {
+            after(err);
+        });
+    }
+
+    static async debugResume(projectId: string, env: string, after: (res: AxiosResponse<any>) => void) {
+        instance.post(`/ui/debug/resume/${projectId}/${env}`)
+            .then(res => {
+                after(res);
+            }).catch(err => {
+            after(err);
+        });
+    }
+
+    static async getDebugState(projectId: string, env: string, after: (res: AxiosResponse<any>) => void) {
+        instance.get(`/ui/debug/state/${projectId}/${env}`)
+            .then(res => {
+                after(res);
+            }).catch(err => {
+            after(err);
+        });
+    }
+
     static async deleteDevModeContainer(name: string, deletePVC: boolean, after: (res: AxiosResponse<any>) => void) {
         instance.delete('/ui/devmode/' + name + "/" + deletePVC)
             .then(res => {

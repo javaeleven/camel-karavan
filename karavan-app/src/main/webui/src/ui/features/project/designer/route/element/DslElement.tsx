@@ -37,7 +37,7 @@ interface Props {
     inStepsLength: number
 }
 
-export function DslElement(props: Props) {
+function DslElementComponent(props: Props) {
 
     const headerRef = React.useRef<HTMLDivElement>(null);
     const {
@@ -52,9 +52,20 @@ export function DslElement(props: Props) {
 
     const [integration] = useIntegrationStore((s) => [s.integration], shallow)
 
-    const [selectedUuids, selectedStep, showMoveConfirmation, setShowMoveConfirmation, setMoveElements, passedRouteId, failedRouteId, isDebugging, setStepDoubleClicked] =
+    // Per-node selection subscription: this node re-renders only when ITS OWN selected
+    // state flips, not when any selection changes anywhere. Combined with React.memo
+    // (see export below), a click re-renders just the 2 affected nodes, not the whole tree.
+    const isSelected = useDesignerStore((s) => s.selectedUuids.includes(props.step.uuid));
+    // Only StepDefinition nodes need the first-selected uuid (add-button expand/collapse);
+    // for every other node this selector is a constant, so it never triggers a re-render.
+    const stepDefFirstSelectedUuid = useDesignerStore((s) => props.step.dslName === 'StepDefinition' ? s.selectedUuids.at(0) : undefined);
+    // Debug highlight applies only to RouteDefinition nodes; constant for the rest so a
+    // debug run doesn't re-render every node in the graph.
+    const passedRouteId = useDesignerStore((s) => props.step.dslName === 'RouteDefinition' ? s.passedRouteId : undefined);
+    const failedRouteId = useDesignerStore((s) => props.step.dslName === 'RouteDefinition' ? s.failedRouteId : undefined);
+    const [setShowMoveConfirmation, setMoveElements, isDebugging, setStepDoubleClicked] =
         useDesignerStore((s) =>
-            [s.selectedUuids, s.selectedStep, s.showMoveConfirmation, s.setShowMoveConfirmation, s.setMoveElements, s.passedRouteId, s.failedRouteId, s.isDebugging, s.setStepDoubleClicked], shallow)
+            [s.setShowMoveConfirmation, s.setMoveElements, s.isDebugging, s.setStepDoubleClicked], shallow)
     const [isDragging, setIsDragging] = useState<boolean>(false);
 
     const [isDraggedOver, setIsDraggedOver] = useState<boolean>(false);
@@ -91,7 +102,7 @@ export function DslElement(props: Props) {
     }
 
     function isElementSelected(): boolean {
-        return selectedUuids.includes(step.uuid);
+        return isSelected;
     }
 
     function hasBorder(): boolean {
@@ -137,8 +148,17 @@ export function DslElement(props: Props) {
             const header = Array.from(el.childNodes.values()).find((n: any) => n.classList?.contains("header"));
             if (header) {
                 const headerIcon: any = Array.from(header.childNodes.values()).find((n: any) => n.classList?.contains("header-icon"));
-                const headerRect = headerIcon.getBoundingClientRect();
-                const rect = el.getBoundingClientRect();
+                // Store positions RELATIVE to the scrolling .flows container (measured in the
+                // same pass), not as viewport coordinates. This makes them scroll-invariant:
+                // the arrow layer's origin is always (0,0), so scrolling the canvas never
+                // invalidates a position and never forces a re-measure/re-render.
+                const origin = (el.closest('.flows') as HTMLElement | null)?.getBoundingClientRect();
+                const ox = origin?.x ?? 0;
+                const oy = origin?.y ?? 0;
+                const rawHeader = headerIcon.getBoundingClientRect();
+                const rawRect = el.getBoundingClientRect();
+                const headerRect = new DOMRect(rawHeader.x - ox, rawHeader.y - oy, rawHeader.width, rawHeader.height);
+                const rect = new DOMRect(rawRect.x - ox, rawRect.y - oy, rawRect.width, rawRect.height);
                 if (step.showChildren) {
                     EventBus.sendPosition("add", step, prevStep, nextStep, parent, rect, headerRect, props.position, inStepsLength, inSteps, isSelected);
                 }
@@ -236,7 +256,7 @@ export function DslElement(props: Props) {
 
     function getAddStepButton() {
         const {step} = props;
-        const hideAddButton = step.dslName === 'StepDefinition' && !CamelDisplayUtil.isStepDefinitionExpanded(integration, step.uuid, selectedUuids.at(0));
+        const hideAddButton = step.dslName === 'StepDefinition' && !CamelDisplayUtil.isStepDefinitionExpanded(integration, step.uuid, stepDefFirstSelectedUuid);
         if (hideAddButton || isDebugging) return (<></>)
         else return (
             <button type="button"
@@ -331,3 +351,9 @@ export function DslElement(props: Props) {
         </div>
     )
 }
+
+// Memoized so a re-render of the parent (or a selection change elsewhere) does NOT
+// re-render this node unless its own props actually change. Props are referentially
+// stable while the integration model is unchanged (e.g. a plain selection click that
+// doesn't alter visibility), so only the nodes whose per-node selectors changed re-render.
+export const DslElement = React.memo(DslElementComponent);

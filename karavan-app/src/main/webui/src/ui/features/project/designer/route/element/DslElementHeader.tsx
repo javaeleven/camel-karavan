@@ -15,6 +15,8 @@ import {AddElementIcon, CopyElementIcon, DeleteElementIcon, DisableStepIcon, Ena
 import {AutoStartupFalseIcon, ErrorHandlerIcon} from "@features/project/designer/icons/OtherIcons";
 import "./DslElementHeader.css"
 import {usePropertiesHook} from "@features/project/designer/property/usePropertiesHook";
+import {useProjectStore} from "@stores/ProjectStore";
+import {ProjectService} from "@services/ProjectService";
 
 interface Props {
     headerRef?: React.Ref<HTMLDivElement>;
@@ -44,9 +46,19 @@ function DslElementHeader(props: Props) {
 
     const [integration] = useIntegrationStore((s) => [s.integration], shallow)
 
-    const [selectedStep, showMoveConfirmation, setShowMoveConfirmation, setMoveElements, passedIds, passedRouteId, failed, failedRouteId, suspendedNodeId, isDebugging] =
+    // Per-node subscriptions so a header re-renders only when ITS OWN selected/debug
+    // state changes, not on every selection or every streamed debug event. Combined with
+    // React.memo (export below), a click/step re-renders just the affected node headers.
+    const isSelected = useDesignerStore((s) => (s.selectedStep as any)?.id === (props.step as any).id);
+    const isPassed = useDesignerStore((s) => s.passedNodeIds.includes((props.step as any).id));
+    const isSuspended = useDesignerStore((s) => s.suspendedNodeId === (props.step as any).id);
+    const hasBreakpoint = useDesignerStore((s) => s.breakpointNodeIds.includes((props.step as any).id));
+    const passedRouteId = useDesignerStore((s) => props.step.dslName === 'RouteDefinition' ? s.passedRouteId : undefined);
+    const failedRouteId = useDesignerStore((s) => props.step.dslName === 'RouteDefinition' ? s.failedRouteId : undefined);
+    const [setShowMoveConfirmation, setMoveElements, failed, isDebugging] =
         useDesignerStore((s) =>
-            [s.selectedStep, s.showMoveConfirmation, s.setShowMoveConfirmation, s.setMoveElements, s.passedNodeIds, s.passedRouteId, s.failed, s.failedRouteId, s.suspendedNodeId, s.isDebugging], shallow)
+            [s.setShowMoveConfirmation, s.setMoveElements, s.failed, s.isDebugging], shallow)
+    const [projectId] = useProjectStore((s) => [s.project.projectId], shallow)
 
     const {step, parent} = props;
     const disabled = (step as any).disabled === true;
@@ -82,8 +94,18 @@ function DslElementHeader(props: Props) {
         onShowDeleteConfirmation(step.uuid);
     }
 
+    function onToggleBreakpoint(evt: React.MouseEvent) {
+        evt.stopPropagation();
+        // Select the node too (not just toggle the breakpoint) so the properties panel
+        // can show the Exchange view for whatever node the user is inspecting/debugging.
+        selectElement(step);
+        const nodeId = (step as any).id;
+        if (!nodeId || !projectId) return;
+        ProjectService.toggleBreakpoint(projectId, nodeId, !hasBreakpoint);
+    }
+
     function isElementSelected(): boolean {
-        return (selectedStep as any)?.id === (step as any).id;
+        return isSelected;
     }
 
     function isWide(): boolean {
@@ -127,11 +149,13 @@ function DslElementHeader(props: Props) {
     }
 
     function getHeaderStyle() {
+        const canHaveBreakpoint = !['RouteConfigurationDefinition', 'RouteTemplateDefinition', 'RouteDefinition'].includes(step.dslName) && (step as any).id !== undefined;
         const style: CSSProperties = {
             width: isWide() ? "100%" : "",
             fontWeight: isElementSelected() ? "bold" : "normal",
             borderWidth: getBorderWidth(),
             borderColor: getBorderColor(),
+            cursor: isDebugging && canHaveBreakpoint ? "pointer" : undefined,
         };
         return style;
     }
@@ -162,14 +186,17 @@ function DslElementHeader(props: Props) {
         } else {
             classes.push('header-icon-circle');
         }
-        const passed = passedIds.includes((step as any).id);
+        const passed = isPassed;
         if (step.dslName === 'FromDefinition') {
         }
         if (passed) {
             classes.push("header-icon-border-passed");
         }
-        if (suspendedNodeId === (step as any).id) {
+        if (isSuspended) {
             classes.push(failed ? "header-icon-border-failed" : "header-icon-border-current")
+        }
+        if (hasBreakpoint) {
+            classes.push("header-icon-border-breakpoint")
         }
         if (isMasGenerated) {
             classes.push("transparent-gradient-border")
@@ -180,7 +207,10 @@ function DslElementHeader(props: Props) {
     }
 
     function getBorderColor() {
-        if (step.dslName === 'RouteDefinition' && (step as any).id === failedRouteId) {
+        if (isSuspended) {
+            // The node the debugger is currently paused ON (about to execute).
+            return failed ? "var(--pf-t--color--red--50)" : "var(--pf-t--color--green--50)";
+        } else if (step.dslName === 'RouteDefinition' && (step as any).id === failedRouteId) {
             return "var(--pf-t--color--red--50)";
         } else if (step.dslName === 'RouteDefinition' && (step as any).id === passedRouteId) {
             return "var(--pf-t--color--green--50)";
@@ -190,7 +220,9 @@ function DslElementHeader(props: Props) {
     }
 
     function getBorderWidth() {
-        if (step.dslName === 'RouteDefinition' && (step as any).id === passedRouteId) {
+        if (isSuspended) {
+            return "3px";
+        } else if (step.dslName === 'RouteDefinition' && (step as any).id === passedRouteId) {
             return "2px";
         } else {
             return '1px';
@@ -220,6 +252,9 @@ function DslElementHeader(props: Props) {
         }
         if (isWide()) {
             classes.push("wide-element")
+        }
+        if (isSuspended) {
+            classes.push(failed ? "header-suspended-failed" : "header-suspended-current")
         }
         return classes.join(" ");
     }
@@ -251,8 +286,10 @@ function DslElementHeader(props: Props) {
         const hasWideChildrenElement = childrenInfo ? getHasWideChildrenElement(childrenInfo) : false;
         const isRoute = "RouteDefinition" === step.dslName;
         const isFrom = "FromDefinition" === step.dslName;
+        const canHaveBreakpoint = !['RouteConfigurationDefinition', 'RouteTemplateDefinition', 'RouteDefinition'].includes(step.dslName) && (step as any).id !== undefined;
         return (
-            <div className={"dsl-element " + headerClasses} style={getHeaderStyle()} ref={mergedRef}>
+            <div className={"dsl-element " + headerClasses} style={getHeaderStyle()} ref={mergedRef}
+                 onClick={isDebugging && canHaveBreakpoint ? onToggleBreakpoint : undefined}>
                 {!['RouteConfigurationDefinition', 'RouteTemplateDefinition', 'RouteDefinition'].includes(step.dslName) &&
                     <div
                         className={getHeaderIconClasses()}
@@ -439,4 +476,6 @@ function DslElementHeader(props: Props) {
     return getHeader();
 }
 
-export default DslElementHeader
+// Memoized so parent re-renders / unrelated selection changes don't re-render this header;
+// it updates only when its own props or per-node selectors change.
+export default React.memo(DslElementHeader)

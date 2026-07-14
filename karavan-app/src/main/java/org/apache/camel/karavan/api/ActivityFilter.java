@@ -48,7 +48,8 @@ public class ActivityFilter extends AbstractApiResource implements ContainerResp
                 || path.startsWith("/ui/container")
                 || path.startsWith("/ui/project/status/camel")
                 || path.startsWith("/ui/catalog/create")
-                || path.startsWith("/ui/infrastructure/deployment")) {
+                || path.startsWith("/ui/infrastructure/deployment")
+                || path.startsWith("/ui/debug")) {
             checkParameters(method, path, requestContext, responseContext);
         }
     }

@@ -18,7 +18,7 @@ import {JSX, useEffect, useState} from 'react';
 import './ProjectPage.css';
 import {shallow} from "zustand/shallow";
 import {useNavigate, useParams} from "react-router-dom";
-import {useFilesStore, useFileStore, useProjectsStore, useProjectStore} from '@stores/ProjectStore';
+import {useAppConfigStore, useFilesStore, useFileStore, useProjectsStore, useProjectStore} from '@stores/ProjectStore';
 import {BUILD_IN_PROJECTS, Project, ProjectType} from '@models/ProjectModels';
 import {RightPanel} from "@shared/ui/RightPanel";
 import {ROUTES} from "@app/navigation/Routes";
@@ -32,6 +32,8 @@ import {BottomConsole} from "@features/project/console/BottomConsole";
 import {useDataPolling} from "@shared/polling/useDataPolling";
 import {useProjectPageStore} from "@features/project/ProjectPageStore";
 import {ErrorBoundaryWrapper} from "@shared/ui/ErrorBoundaryWrapper";
+import {useDesignerStore} from "@features/project/designer/DesignerStore";
+import {ProjectService} from "@services/ProjectService";
 
 interface ProjectPageProps {
     developerManager: JSX.Element;
@@ -49,8 +51,18 @@ export function ProjectPage(props: ProjectPageProps): JSX.Element {
     const showFilePanel = file !== undefined && operation === 'select';
     const [urlFileName, setUrlFileName] = useState<string>();
     const {refreshData} = useProjectFunctions();
+    const [isDebugging] = useDesignerStore((s) => [s.isDebugging], shallow);
+    const [config] = useAppConfigStore((s) => [s.config], shallow);
 
     useDataPolling('ProjectPage', refreshData, 3000, [tabIndex, refreshTrace, project]);
+
+    // Dedicated fast poll for the interactive debugger's suspended-exchange state.
+    // Runs only while isDebugging is true; a no-op otherwise.
+    useDataPolling('debug', () => {
+        if (isDebugging && project?.projectId) {
+            ProjectService.refreshDebugState(project.projectId, config.environment);
+        }
+    }, 1000, [isDebugging, project, config.environment]);
 
     let {projectId, fileName} = useParams();
     const navigate = useNavigate();

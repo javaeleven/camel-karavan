@@ -36,9 +36,9 @@ export function RouteDesigner() {
         isSourceKamelet, isActionKamelet, isKamelet, isSinkKamelet, createRouteTemplate} = useRouteDesignerHook();
 
     const [integration] = useIntegrationStore((state) => [state.integration], shallow)
-    const [showDeleteConfirmation, setPosition, width, height, top, left, showMoveConfirmation, setShowMoveConfirmation, passedIds, selectedStep, isDebugging] =
+    const [showDeleteConfirmation, setPosition, showMoveConfirmation, setShowMoveConfirmation, passedIds, isDebugging] =
         useDesignerStore((s) =>
-        [s.showDeleteConfirmation, s.setPosition, s.width, s.height, s.top, s.left, s.showMoveConfirmation, s.setShowMoveConfirmation, s.passedNodeIds, s.selectedStep, s.isDebugging], shallow)
+        [s.showDeleteConfirmation, s.setPosition, s.showMoveConfirmation, s.setShowMoveConfirmation, s.passedNodeIds, s.isDebugging], shallow)
 
     const [showSelector] = useSelectorStore((s) => [s.showSelector], shallow)
 
@@ -54,8 +54,13 @@ export function RouteDesigner() {
         if (flowRef && flowRef.current) {
             const el = flowRef.current;
             const rect = el.getBoundingClientRect();
-            if (width !== rect.width || height !== rect.height || top !== rect.top || left !== rect.left) {
-                setPosition(rect.width, rect.height, rect.top, rect.left)
+            // Node positions are stored relative to the .flows container (see
+            // DslElement.sendPosition), so the arrow-layer origin is fixed at (0,0)
+            // and scrolling never changes coordinates. Only the graph SIZE matters,
+            // so fire on size change only — scrolling then triggers zero re-renders.
+            const s = useDesignerStore.getState();
+            if (s.width !== rect.width || s.height !== rect.height || s.top !== 0 || s.left !== 0) {
+                setPosition(rect.width, rect.height, 0, 0)
             }
         }
     }
@@ -65,7 +70,7 @@ export function RouteDesigner() {
     const flowRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        if (selectedStep === undefined) {
+        if (useDesignerStore.getState().selectedStep === undefined) {
             setKey(Math.random.toString())
         }
     }, []);
@@ -177,6 +182,7 @@ export function RouteDesigner() {
                         )
                     })}
                     {!isDebugging && getGraphButtons()}
+                    <div className="flows-end-spacer" aria-hidden="true"/>
                 </div>
             </div>)
     }

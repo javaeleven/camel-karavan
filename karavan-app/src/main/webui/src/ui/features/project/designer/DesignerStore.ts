@@ -201,6 +201,17 @@ export const useConnectionsStore = createWithEqualityFn<ConnectionsState>((set) 
 export const DesignerViewSwitchOptions = ["routes", "rest", "beans", "kamelet"] as const;
 export type DesignerViewSwitchOption = typeof DesignerViewSwitchOptions[number];
 
+// Suspended-exchange dump for a single node, as returned by GET /ui/debug/state.
+// Kept loosely typed since the backend mirrors Camel's BacklogTracerEventMessage JSON,
+// whose exact shape can vary across Camel versions.
+export interface DebugExchangeData {
+    nodeId: string;
+    exchangeId?: string;
+    body?: any;
+    headers?: Record<string, any>;
+    exchangeProperties?: Record<string, any>;
+}
+
 type DesignerState = {
     designerSwitch: boolean
     isDebugging: boolean
@@ -217,6 +228,8 @@ type DesignerState = {
     failedRouteId?: string
     suspendedNodeId?: string
     failed: boolean
+    breakpointNodeIds: string[]
+    debugExchanges: Record<string, DebugExchangeData>
     clipboardSteps: CamelElement[]
     width: number
     height: number
@@ -245,6 +258,8 @@ const designerState: DesignerState = {
     failedRouteId: undefined,
     suspendedNodeId: undefined,
     failed: false,
+    breakpointNodeIds: [],
+    debugExchanges: {},
     clipboardSteps: [],
     width: 0,
     height: 0,
@@ -270,6 +285,8 @@ type DesignerAction = {
     setFailedRouteId: (failedRouteId?: string) => void;
     setSuspendedNodeId: (suspendedNodeId?: string) => void;
     setFailed: (failed: boolean) => void;
+    setBreakpointNodeIds: (breakpointNodeIds: string[]) => void;
+    setDebugExchanges: (debugExchanges: Record<string, DebugExchangeData>) => void;
     setClipboardSteps: (clipboardSteps: CamelElement[]) => void;
     setPosition: (width: number, height: number, top: number, left: number) => void;
     reset: () => void;
@@ -328,6 +345,16 @@ export const useDesignerStore = createWithEqualityFn<DesignerState & DesignerAct
     },
     setSuspendedNodeId: (suspendedNodeId?: string) => {
         set({suspendedNodeId: suspendedNodeId})
+    },
+    setBreakpointNodeIds: (breakpointNodeIds: string[]) => {
+        set((state: DesignerState) => {
+            state.breakpointNodeIds.length = 0;
+            state.breakpointNodeIds.push(...breakpointNodeIds);
+            return state;
+        })
+    },
+    setDebugExchanges: (debugExchanges: Record<string, DebugExchangeData>) => {
+        set({debugExchanges: debugExchanges})
     },
     setClipboardSteps: (clipboardSteps: CamelElement[]) => {
         set((state: DesignerState) => {
