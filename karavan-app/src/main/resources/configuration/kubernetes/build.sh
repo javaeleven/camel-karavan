@@ -47,6 +47,26 @@ esac
 # internal registry (registry/distroless/java21) — see deploy/eks/mirror-base-image.sh.
 JIB_BASE_IMAGE=${IMAGE_REGISTRY}/distroless/java21
 
+# The project's runtime image reference. jib PUSHES here and the generated k8s
+# Deployment PULLS from here, so it must be ONE fully-qualified name — registry
+# host + group + project + tag — that BOTH the in-cluster build pod (push) and the
+# cluster kubelet (pull) can resolve. Computed before the export so it can be baked
+# into the deployment fragment below.
+TARGET_IMAGE=${IMAGE_REGISTRY}/${IMAGE_GROUP}/${PROJECT_ID}:${TAG}
+
+# Bake the concrete image into the jkube deployment fragment BEFORE `camel export`
+# copies it into the generated project. Since Camel 4.18 the export adds no
+# jib/jkube plugin to the pom, so jkube runs resource-only (no image generator) and
+# does NOT interpolate the Maven '-D' user property `jkube.image.name` inside a
+# resource fragment — the container image would otherwise stay an unresolved
+# placeholder / a registry-less default and the pod fails with ImagePullBackOff
+# ("trying and failing to pull image"). Substituting here guarantees the applied
+# Deployment carries the real registry path. Handles the current placeholder token
+# and the legacy ${jkube.image.name} form for already-committed projects.
+if [ -f deployment.jkube.yaml ]; then
+  sed -i "s|__KARAVAN_TARGET_IMAGE__|${TARGET_IMAGE}|g; s|\${jkube.image.name}|${TARGET_IMAGE}|g" deployment.jkube.yaml
+fi
+
 echo "Exporting project to runtime: ${CAMEL_RUNTIME}"
 if [ "${CAMEL_RUNTIME}" = "quarkus" ]; then
   # Quarkus needs its version + gav explicitly; read them from the project's properties.
@@ -60,7 +80,6 @@ fi
 
 JIB_VERSION=3.4.6
 JKUBE_VERSION=1.19.0
-TARGET_IMAGE=${IMAGE_REGISTRY}/${IMAGE_GROUP}/${PROJECT_ID}:${TAG}
 
 case "${CAMEL_RUNTIME}" in
   quarkus)
@@ -110,8 +129,7 @@ case "${CAMEL_RUNTIME}" in
       -Djib.to.auth.password=${IMAGE_REGISTRY_PASSWORD} \
       -Djkube.skip.build=true \
       -Djkube.namespace=${NAMESPACE} \
-      -Djkube.imagePullPolicy=Always \
-      -Djkube.image.name=${TARGET_IMAGE}
+      -Djkube.imagePullPolicy=Always
     ;;
   *)
     # camel-main: the export emits a Spring-Boot-loader fat jar AND sets jib
@@ -133,7 +151,6 @@ case "${CAMEL_RUNTIME}" in
       -Djkube.namespace=${NAMESPACE} \
       -Djkube.imagePullPolicy=Always \
       -Djkube.skip.build=true \
-      -Djkube.image.name=${TARGET_IMAGE} \
       -Djib.from.image=${JIB_BASE_IMAGE} \
       -Djib.from.platforms=${JIB_PLATFORM} \
       -Djib.allowInsecureRegistries=true \

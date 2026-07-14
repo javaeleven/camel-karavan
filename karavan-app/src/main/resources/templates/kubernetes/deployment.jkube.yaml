@@ -15,11 +15,17 @@ spec:
       serviceAccount: karavan
       # Explicit container: Camel >=4.18 exports carry no jib/jkube plugins, so no
       # jkube generator runs (resource-only mode) and without this the generated
-      # Deployment has zero containers (422 Required value). jkube interpolates
-      # ${...} with Maven properties; jkube.image.name is passed by build.sh.
+      # Deployment has zero containers (422 Required value).
+      #
+      # __KARAVAN_TARGET_IMAGE__ is substituted with the real registry image
+      # (registry host + group + project + tag) by configuration/kubernetes/build.sh
+      # BEFORE `camel export`, because jkube does NOT interpolate Maven '-D'
+      # properties inside a resource fragment — leaving a placeholder here makes the
+      # pod fail with ImagePullBackOff. ${project.artifactId} IS resolved by jkube
+      # (a real Maven project property), so the container name stays dynamic.
       containers:
         - name: ${project.artifactId}
-          image: ${jkube.image.name}
+          image: __KARAVAN_TARGET_IMAGE__
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
