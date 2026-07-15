@@ -2,7 +2,7 @@ import {AuthApi, getCurrentUser} from "@api/auth/AuthApi";
 import React from "react";
 import {SvgNavigationIcon} from "@shared/icons/SvgNavigationIcon";
 import {KubernetesIcon} from "@features/project/designer/icons/ComponentIcons";
-import {DockerIcon} from "@patternfly/react-icons";
+import {DockerIcon, InfoCircleIcon} from "@patternfly/react-icons";
 
 export class MenuItem {
     pageId: string = '';
@@ -33,6 +33,9 @@ export function getNavigationFirstMenu(environment: string, infrastructure: stri
     if (getCurrentUser()?.roles?.includes('platform-admin')) {
         menus.push(new MenuItem("system", "System", iconInfra));
     }
+
+    // Deployment marker: opens the Version page (changelog from version.json).
+    menus.push(new MenuItem("version", "Version", <InfoCircleIcon/>));
 
     if (AuthApi.authType === 'session') {
         menus.push(new MenuItem("acl", "Access", SvgNavigationIcon({icon: 'access'})));

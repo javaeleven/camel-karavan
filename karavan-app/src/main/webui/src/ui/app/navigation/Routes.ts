@@ -5,6 +5,7 @@ export const ROUTES = {
     PROJECT_DETAIL: "/projects/:projectId",
     PROJECT_FILE: "/projects/:projectId/:fileName",
     SYSTEM: "/system",
+    VERSION: "/version",
     SETTINGS: "/settings",
     SETTINGS_FILE: "/settings/:projectId/:fileName",
     DOCUMENTATION: "/documentation",

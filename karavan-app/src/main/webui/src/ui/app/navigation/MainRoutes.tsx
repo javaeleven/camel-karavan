@@ -15,6 +15,7 @@ import {DashboardPage} from "@features/dashboard/DashboardPage";
 import {LoginPage} from "@app/login/LoginPage";
 import {useReadinessStore} from "@stores/ReadinessStore";
 import {SettingsPage} from "@features/settings/SettingsPage";
+import {VersionPage} from "@features/version/VersionPage";
 
 export function MainRoutes() {
 
@@ -70,6 +71,7 @@ export function MainRoutes() {
                 </ProtectedRoute>
             }/>
             <Route path={ROUTES.SYSTEM} element={<ProtectedRoute><SystemPage/></ProtectedRoute>}/>
+            <Route path={ROUTES.VERSION} element={<ProtectedRoute><VersionPage/></ProtectedRoute>}/>
             <Route path={ROUTES.DOCUMENTATION} element={<ProtectedRoute><DocumentationPage/></ProtectedRoute>}/>
             <Route path={ROUTES.ACL} element={<ProtectedRoute><AccessPage/></ProtectedRoute>}/>
             <Route path={ROUTES.FORBIDDEN} element={<NotAuthorizedPage/>}/>
